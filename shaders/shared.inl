@@ -41,7 +41,7 @@ struct TextureId {
     SamplerId sampler_id;
 };
 
-struct PrimtiveInfo {
+DAXA_DECL_BUFFER_STRUCT(MaterialInfo, {
     TextureId albedo;
     u32 has_albedo;
     f32vec4 albedo_factor;
@@ -49,14 +49,14 @@ struct PrimtiveInfo {
     u32 has_metallic_roughness;
     f32 metallic;
     f32 roughness;
-    TextureId normal;
-    u32 has_normal;
-    TextureId occlusion;
-    u32 has_occlusion;
-    TextureId emissive;
-    u32 has_emissive;
+    TextureId normal_map;
+    u32 has_normal_map;
+    TextureId occlusion_map;
+    u32 has_occlusion_map;
+    TextureId emissive_map;
+    u32 has_emissive_map;
     f32vec3 emissive_factor;
-};
+});
 
 DAXA_DECL_BUFFER_STRUCT(ObjectInfo, {
     f32mat4x4 model_matrix;
@@ -70,13 +70,18 @@ DAXA_DECL_BUFFER_STRUCT(CameraInfo, {
 });
 
 struct DrawPush {
-    f32mat4x4 vp;
-    f32vec3 camera_position;
-    //u64 camera_info_buffer;
+    u64 camera_info_buffer;
     u64 object_info_buffer;
     u64 lights_info_buffer;
     u64 face_buffer;
-    TextureId albedo;
-    TextureId metallic_roughness;
-    TextureId normal_map;
+    u64 material_info;
+    TextureId irradiance_map;
+    TextureId brdfLUT;
+    TextureId prefilter_map;
+};
+
+struct SkyboxDrawPush {
+    f32mat4x4 mvp;
+    u64 face_buffer;
+    TextureId env_map;
 };

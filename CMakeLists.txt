@@ -24,6 +24,8 @@ add_executable(${PROJECT_NAME}
     "src/graphics/texture.cpp"
     "src/graphics/camera.hpp"
     "src/graphics/camera.cpp"
+    "src/systems/ibl_renderer.hpp"
+    "src/systems/ibl_renderer.cpp"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw)

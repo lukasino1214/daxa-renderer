@@ -24,6 +24,7 @@ using Clock = std::chrono::high_resolution_clock;
 
 #include "graphics/model.hpp"
 #include "graphics/camera.hpp"
+#include "systems/ibl_renderer.hpp"
 
 #define DAXA_GLSL 1
 struct App : AppWindow<App> {
@@ -32,6 +33,7 @@ struct App : AppWindow<App> {
     f64 delta_time;
 
     daxa::Context daxa_ctx = daxa::create_context({
+        //.enable_validation = true,
         .enable_validation = false,
     });
     
@@ -48,10 +50,15 @@ struct App : AppWindow<App> {
     });
 
     daxa::ImageId depth_image = device.create_image({
+        .dimensions = 2,
         .format = daxa::Format::D24_UNORM_S8_UINT,
         .aspect = daxa::ImageAspectFlagBits::DEPTH | daxa::ImageAspectFlagBits::STENCIL,
         .size = {size_x, size_y, 1},
+        .mip_level_count = 1,
+        .array_layer_count = 1,
+        .sample_count = 1,
         .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT,
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY
     });
 
     daxa::PipelineCompiler pipeline_compiler = device.create_pipeline_compiler({
@@ -61,6 +68,7 @@ struct App : AppWindow<App> {
                 "build/vcpkg_installed/x64-linux/include",
                 "vcpkg_installed/x64-linux/include",
                 "shaders",
+                "../shaders",
                 "include",
             },
             .language = daxa::ShaderLanguage::GLSL,
@@ -108,6 +116,7 @@ struct App : AppWindow<App> {
     daxa::BinarySemaphore acquire_semaphore = device.create_binary_semaphore({.debug_name = APPNAME_PREFIX("acquire_semaphore")});
     daxa::BinarySemaphore present_semaphore = device.create_binary_semaphore({.debug_name = APPNAME_PREFIX("present_semaphore")});
 
+    //glm::mat4 m = glm::translate(glm::mat4(1.0f), {0.0f, 5.0f, 0.0f}) * glm::toMat4(glm::quat({glm::radians(90.0f), glm::radians(0.0f), glm::radians(180.0f)})) * glm::scale(glm::mat4(1.0f), {1.03f, 1.03f, 1.03f});
     glm::mat4 m = glm::translate(glm::mat4(1.0f), {0.0f, 5.0f, 0.0f}) * glm::toMat4(glm::quat({0.0f, glm::radians(90.0f), glm::radians(180.0f)})) * glm::scale(glm::mat4(1.0f), {0.03f, 0.03f, 0.03f});
 
     u32 current_camera = 0;
@@ -116,7 +125,7 @@ struct App : AppWindow<App> {
     std::vector<Model> models;
 
     daxa::BufferId camera_info_buffer = device.create_buffer({
-        .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
         .size = static_cast<u32>(sizeof(CameraInfo)),
     });
 
@@ -135,6 +144,8 @@ struct App : AppWindow<App> {
     });
 
     u64 lights_info_buffer_address = device.buffer_reference(lights_info_buffer);
+
+    IBLRenderer ibl_system = IBLRenderer::load(device, pipeline_compiler, swapchain.get_format());
 
     bool paused = true;
 
@@ -157,6 +168,7 @@ struct App : AppWindow<App> {
         for (auto & model : models) {
             model.destroy(device);
         }
+        ibl_system.destroy(device);
     }
 
     bool update() {
@@ -213,7 +225,7 @@ struct App : AppWindow<App> {
 
         ui_update();
 
-        cameras[current_camera].camera.resize(static_cast<i32>(viewport_size_x), static_cast<i32>(viewport_size_y));
+        cameras[current_camera].camera.resize(static_cast<i32>(size_x), static_cast<i32>(size_y));
         cameras[current_camera].camera.set_pos(cameras[current_camera].pos);
         cameras[current_camera].camera.set_rot(cameras[current_camera].rot.x, cameras[current_camera].rot.y);
         cameras[current_camera].update(delta_time);
@@ -232,22 +244,36 @@ struct App : AppWindow<App> {
             .debug_name = APPNAME_PREFIX("cmd_list"),
         });
 
-        /*glm::mat4 view = cameras[current_camera].camera.get_view();
+        {
+            daxa::BufferId staging_buffer = device.create_buffer({
+                .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                .size = static_cast<u32>(sizeof(ObjectInfo)),
+            });
+            cmd_list.destroy_buffer_deferred(staging_buffer);
 
-        CameraInfo camera_info {
-            .projection_matrix = *reinterpret_cast<const f32mat4x4*>(&cameras[current_camera].camera.proj_mat),
-            .view_matrix = *reinterpret_cast<const f32mat4x4*>(&view),
-            .position = *reinterpret_cast<const f32vec3*>(&cameras[current_camera].pos)
-        };
-
-        auto staging_buffer_ptr = device.map_memory_as<u8>(camera_info_buffer);
-        std::memcpy(staging_buffer_ptr, &camera_info, sizeof(CameraInfo));
-        device.unmap_memory(camera_info_buffer);
-
-        cmd_list.pipeline_barrier({ // Maybe this
-            .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
-            .waiting_pipeline_access = daxa::AccessConsts::ALL_GRAPHICS_READ_WRITE,
-        });*/
+            glm::mat4 view = cameras[current_camera].camera.get_view();
+            CameraInfo camera_info {
+                .projection_matrix = *reinterpret_cast<const f32mat4x4*>(&cameras[current_camera].camera.proj_mat),
+                .view_matrix = *reinterpret_cast<const f32mat4x4*>(&view),
+                .position = *reinterpret_cast<const f32vec3*>(&cameras[current_camera].pos)
+            };
+            auto staging_buffer_ptr = device.map_memory_as<u8>(staging_buffer);
+            std::memcpy(staging_buffer_ptr, &camera_info, sizeof(CameraInfo));
+            device.unmap_memory(staging_buffer);
+            cmd_list.pipeline_barrier({
+                .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
+                .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
+            });
+            cmd_list.copy_buffer_to_buffer({
+                .src_buffer = staging_buffer,
+                .dst_buffer = camera_info_buffer,
+                .size = sizeof(CameraInfo),
+            });
+            cmd_list.pipeline_barrier({
+                .awaited_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+                .waiting_pipeline_access = daxa::AccessConsts::VERTEX_SHADER_READ,
+            });
+        }
 
         cmd_list.pipeline_barrier_image_transition({
             .waiting_pipeline_access = daxa::AccessConsts::COLOR_ATTACHMENT_OUTPUT_WRITE,
@@ -285,8 +311,20 @@ struct App : AppWindow<App> {
 
         for (auto & model : models) {
             model.bind_index_buffer(cmd_list);
-            model.draw(cmd_list, temp_mvp, cameras[current_camera].pos, camera_info_buffer_address, object_info_buffer_address, lights_info_buffer_address);
+
+            DrawPush push_constant;
+            push_constant.camera_info_buffer = camera_info_buffer_address;
+            push_constant.object_info_buffer = object_info_buffer_address;
+            push_constant.lights_info_buffer = lights_info_buffer_address;
+            push_constant.irradiance_map = ibl_system.irradiance_cube;
+            push_constant.brdfLUT = ibl_system.BRDFLUT;
+            push_constant.prefilter_map = ibl_system.prefiltered_cube;
+
+            model.draw(cmd_list, push_constant);
         }
+
+        ibl_system.draw(cmd_list, cameras[current_camera].camera.proj_mat, cameras[current_camera].camera.get_view());
+
         cmd_list.end_renderpass();
 
         imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, size_x, size_y);
@@ -318,6 +356,7 @@ struct App : AppWindow<App> {
 
     void setup() {
         models.push_back(Model::load(device, "assets/models/Sponza/Sponza.gltf"));
+        //models.push_back(Model::load(device, "assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf"));
 
         std::cout << "Loading models done!" << std::endl;
 

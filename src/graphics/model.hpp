@@ -20,19 +20,20 @@ using namespace daxa::types;
 #define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
 
 struct Primitive {
-    uint32_t first_index;
-    uint32_t first_vertex;
-    uint32_t index_count;
-    uint32_t vertex_count;
-    Texture albedo_texture;
-    Texture metallic_roughness_texture;
-    Texture normal_map_texture;
+    u32 first_index;
+    u32 first_vertex;
+    u32 index_count;
+    u32 vertex_count;
+    u32 material_index;
 };
 
 struct Model {
     daxa::BufferId vertex_buffer;
     daxa::BufferId index_buffer;
     std::vector<Primitive> primitives;
+    std::vector<MaterialInfo> material_infos;
+    std::vector<daxa::BufferId> material_buffers;
+    std::vector<u64> material_buffer_addresses;
     std::vector<Texture> images;
     Texture default_texture;
     u64 vertex_buffer_address;
@@ -40,7 +41,8 @@ struct Model {
     static Model load(daxa::Device & device, const std::filesystem::path & path);
 
     void bind_index_buffer(daxa::CommandList & cmd_list);
-    void draw(daxa::CommandList & cmd_list, const glm::mat4 & mvp, const glm::vec3& camera_position, u64 camera_info_buffer, u64 object_info_buffer, u64 lights_info_buffer);
+    void draw(daxa::CommandList & cmd_list);
+    void draw(daxa::CommandList & cmd_list, DrawPush& push_constant);
     
     void destroy(daxa::Device & device);
 };

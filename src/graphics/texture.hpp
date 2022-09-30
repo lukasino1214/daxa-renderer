@@ -22,7 +22,7 @@ struct Texture {
     static Texture load(daxa::Device& device, u32 width, u32 height, unsigned char* data, TextureType type);
     static Texture load(daxa::Device& device, const std::filesystem::path& path);
 
-    inline static void generate_mipmaps(daxa::CommandList& cmd_list, const daxa::ImageInfo& image_info, const daxa::ImageId& image);
+    static void generate_mipmaps(daxa::CommandList& cmd_list, const daxa::ImageInfo& image_info, const daxa::ImageId& image);
     
     TextureId get_texture_id();
 

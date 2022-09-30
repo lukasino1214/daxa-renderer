@@ -11,6 +11,9 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
     std::vector<DrawVertex> vertices{};
     std::vector<u32> indices{};
     std::vector<Primitive> primitives{};
+    std::vector<MaterialInfo> material_infos{};
+    std::vector<daxa::BufferId> material_buffers;
+    std::vector<u64> material_buffer_addresses;
     std::vector<Texture> images{};
 
     std::string warn, err;
@@ -22,7 +25,7 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
 
     auto get_image_type = [&](const tinygltf::Model& model, usize image_index) -> TextureType {
         for(auto& material : model.materials) {
-            if(material.pbrMetallicRoughness.baseColorTexture.index != 1) {
+            if(material.pbrMetallicRoughness.baseColorTexture.index != -1) {
                 u32 diffuseTextureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
                 const tinygltf::Texture& diffuseTexture = model.textures[diffuseTextureIndex];
                 if (image_index == diffuseTexture.source) {
@@ -61,6 +64,158 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
     }
 
     Texture default_texture = Texture::load(device, "assets/textures/white.png");
+
+    for(usize material_index = 0; material_index < model.materials.size(); material_index++) {
+        tinygltf::Material& material = model.materials[material_index];
+        MaterialInfo material_info {};
+
+        if(material.pbrMetallicRoughness.baseColorTexture.index != -1) {
+            u32 texture_index = material.pbrMetallicRoughness.baseColorTexture.index;
+            u32 image_index = model.textures[texture_index].source;
+            material_info.albedo = images[image_index].get_texture_id();
+            material_info.albedo_factor = { 1.0f, 1.0f, 1.0f, 1.0f };
+            material_info.has_albedo = 1;
+        } else {
+            material_info.albedo = default_texture.get_texture_id();
+            std::vector<f64>& vector = material.pbrMetallicRoughness.baseColorFactor;
+            material_info.albedo_factor = { static_cast<f32>(vector[0]), static_cast<f32>(vector[1]), static_cast<f32>(vector[2]), static_cast<f32>(vector[3]) };
+            material_info.has_albedo = 0;
+        }
+
+        if(material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1) {
+            u32 texture_index = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+            u32 image_index = model.textures[texture_index].source;
+            material_info.metallic_roughness = images[image_index].get_texture_id();
+            material_info.has_metallic_roughness = 1;
+            material_info.metallic = 1.0f;
+            material_info.roughness = 1.0f;
+        } else {
+            material_info.metallic_roughness = default_texture.get_texture_id();
+            material_info.has_metallic_roughness = 0;
+            material_info.metallic = static_cast<f32>(material.pbrMetallicRoughness.metallicFactor);
+            material_info.roughness = static_cast<f32>(material.pbrMetallicRoughness.roughnessFactor);
+        }
+
+        if(material.normalTexture.index != -1) {
+            u32 texture_index = material.normalTexture.index;
+            u32 image_index = model.textures[texture_index].source;
+            material_info.normal_map = images[image_index].get_texture_id();
+            material_info.has_normal_map = 1;
+        } else {
+            material_info.normal_map = default_texture.get_texture_id();
+            material_info.has_normal_map = 0;
+        }
+
+        if(material.occlusionTexture.index != -1) {
+            u32 texture_index = material.occlusionTexture.index;
+            u32 image_index = model.textures[texture_index].source;
+            material_info.occlusion_map = images[image_index].get_texture_id();
+            material_info.has_occlusion_map = 1;
+        } else {
+            material_info.occlusion_map = default_texture.get_texture_id();
+            material_info.has_occlusion_map = 0;
+        }
+
+        if(material.emissiveTexture.index != -1) {
+            u32 texture_index = material.emissiveTexture.index;
+            u32 image_index = model.textures[texture_index].source;
+            material_info.emissive_map = images[image_index].get_texture_id();
+            material_info.has_emissive_map = 1;
+            material_info.emissive_factor = { 1.0f, 1.0f, 1.0f };
+        } else {
+            std::vector<f64>& vector = material.emissiveFactor;
+            material_info.emissive_factor = { static_cast<f32>(vector[0]), static_cast<f32>(vector[1]), static_cast<f32>(vector[2]) };
+            material_info.emissive_map = default_texture.get_texture_id();
+            material_info.has_emissive_map = 0;
+        }
+
+        material_infos.push_back(std::move(material_info));
+    }
+
+    /*auto cmd_list = device.create_command_list({
+        .debug_name = APPNAME_PREFIX("cmd_list"),
+    });
+
+
+    {
+        daxa::BufferId material_staging_buffer = device.create_buffer({
+            .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+            .size = sizeof(MaterialInfo),
+        });
+        cmd_list.destroy_buffer_deferred(material_staging_buffer);
+
+        for(usize i = 0; i < material_infos.size(); i++) {
+            cmd_list.pipeline_barrier({
+                .awaited_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
+                .waiting_pipeline_access = daxa::AccessConsts::HOST_WRITE,
+            });
+
+            daxa::BufferId material_info_buffer = device.create_buffer({
+                .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+                .size = sizeof(MaterialInfo),
+            });
+
+            auto buffer_ptr = device.map_memory_as<MaterialInfo>(material_staging_buffer);
+            std::memcpy(buffer_ptr, &material_infos[i], sizeof(MaterialInfo));
+            device.unmap_memory(material_staging_buffer);
+
+            cmd_list.pipeline_barrier({
+                .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
+                .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
+            });
+
+            cmd_list.copy_buffer_to_buffer({
+                .src_buffer = material_staging_buffer,
+                .dst_buffer = material_info_buffer,
+                .size = static_cast<u32>(sizeof(MaterialInfo)),
+            });
+
+            material_buffers.push_back(material_info_buffer);
+            material_buffer_addresses.push_back(device.buffer_reference(material_info_buffer));
+        }
+    }*/
+
+    for(usize i = 0; i < material_infos.size(); i++) {
+        daxa::BufferId material_staging_buffer = device.create_buffer({
+            .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+            .size = sizeof(MaterialInfo),
+        });
+
+        daxa::BufferId material_info_buffer = device.create_buffer({
+            .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+            .size = sizeof(MaterialInfo),
+        });
+
+        auto cmd_list = device.create_command_list({
+            .debug_name = APPNAME_PREFIX("cmd_list"),
+        });
+
+        auto buffer_ptr = device.map_memory_as<MaterialInfo>(material_staging_buffer);
+        std::memcpy(buffer_ptr, &material_infos[i], sizeof(MaterialInfo));
+        device.unmap_memory(material_staging_buffer);
+
+        cmd_list.pipeline_barrier({
+            .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
+            .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
+        });
+
+        cmd_list.copy_buffer_to_buffer({
+            .src_buffer = material_staging_buffer,
+            .dst_buffer = material_info_buffer,
+            .size = static_cast<u32>(sizeof(MaterialInfo)),
+        });
+
+        cmd_list.complete();
+        device.submit_commands({
+            .command_lists = {std::move(cmd_list)}
+        });
+
+        device.wait_idle();
+        device.destroy_buffer(material_staging_buffer);
+
+        material_buffers.push_back(material_info_buffer);
+        material_buffer_addresses.push_back(device.buffer_reference(material_info_buffer));
+    }
 
     for (auto & scene : model.scenes) {
         for (size_t i = 0; i < scene.nodes.size(); i++) {
@@ -140,53 +295,15 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
                     }
                 }
 
-                Texture albedo_texture;
-                Texture metallic_roughness_texture;
-                Texture normal_map;
-
-                if (primitive.material != -1) {
-                    tinygltf::Material& material = model.materials[primitive.material];
-
-                    //albedo
-                    if (material.pbrMetallicRoughness.baseColorTexture.index != -1) {
-                        uint32_t textureIndex = material.pbrMetallicRoughness.baseColorTexture.index;
-                        uint32_t imageIndex = model.textures[textureIndex].source;
-                        albedo_texture = images[imageIndex];
-                    } else {
-                        albedo_texture = default_texture;
-                    }
-
-                    //metallic roughness
-                    if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1) {
-                        uint32_t textureIndex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
-                        uint32_t imageIndex = model.textures[textureIndex].source;
-                        metallic_roughness_texture = images[imageIndex];
-                    } else {
-                        metallic_roughness_texture = default_texture;
-                    }
-
-                    //normal map
-                    if (material.normalTexture.index != -1) {
-                        uint32_t textureIndex = material.normalTexture.index;
-                        uint32_t imageIndex = model.textures[textureIndex].source;
-                        normal_map = images[imageIndex];
-                    } else {
-                        normal_map = default_texture;
-                    }
-                } else {
-                    albedo_texture = default_texture;
-                    metallic_roughness_texture = default_texture;
-                    normal_map = default_texture;
-                }
-
                 Primitive temp_primitive {
                     .first_index = indexOffset,
                     .first_vertex = vertexOffset,
                     .index_count = indexCount,
                     .vertex_count = vertexCount,
-                    .albedo_texture = albedo_texture,
-                    .metallic_roughness_texture = metallic_roughness_texture,
-                    .normal_map_texture = normal_map
+                    .material_index = static_cast<u32>(primitive.material) 
+                    /*.albedo_texture = material_infos[primitive.material].albedo,
+                    .metallic_roughness_texture = material_infos[primitive.material].metallic_roughness,
+                    .normal_map_texture = material_infos[primitive.material].normal_map,*/
                 };
 
                 primitives.push_back(temp_primitive);
@@ -287,9 +404,12 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
         .vertex_buffer = vertex_buffer,
         .index_buffer = index_buffer,
         .primitives = std::move(primitives),
+        .material_infos = std::move(material_infos),
+        .material_buffers = std::move(material_buffers),
+        .material_buffer_addresses = std::move(material_buffer_addresses),
         .images = std::move(images),
         .default_texture = default_texture,
-        .vertex_buffer_address = device.buffer_reference(vertex_buffer)
+        .vertex_buffer_address = device.buffer_reference(vertex_buffer),
     };
 }
 
@@ -300,25 +420,41 @@ void Model::destroy(daxa::Device& device) {
         image.destroy(device);
     }
     default_texture.destroy(device);
+    for (auto & buffer : material_buffers) {
+        device.destroy_buffer(buffer);
+    }
 }
 
 void Model::bind_index_buffer(daxa::CommandList & cmd_list) {
     cmd_list.set_index_buffer(index_buffer, 0, 4);
 }
 
-void Model::draw(daxa::CommandList & cmd_list, const glm::mat4 & mvp, const glm::vec3& camera_position,  u64 camera_info_buffer, u64 object_info_buffer, u64 lights_info_buffer) {
+void Model::draw(daxa::CommandList & cmd_list) {
     for (auto & primitive : primitives) {
-        cmd_list.push_constant(DrawPush{
-            .vp = *reinterpret_cast<const f32mat4x4*>(&mvp),
-            .camera_position = *reinterpret_cast<const f32vec3*>(&camera_position),
-             //.camera_info_buffer = camera_info_buffer,
-            .object_info_buffer = object_info_buffer,
-            .lights_info_buffer = lights_info_buffer,
-            .face_buffer = vertex_buffer_address,
-            .albedo = primitive.albedo_texture.get_texture_id(),
-            .metallic_roughness = primitive.metallic_roughness_texture.get_texture_id(),
-            .normal_map = primitive.normal_map_texture.get_texture_id()
-        });
+        if (primitive.index_count > 0) {
+            cmd_list.draw_indexed({
+                .index_count = primitive.index_count,
+                .instance_count = 1,
+                .first_index = primitive.first_index,
+                .vertex_offset = primitive.first_vertex,
+                .first_instance = 0,
+            });
+        } else {
+            cmd_list.draw({
+                .vertex_count = primitive.vertex_count,
+                .instance_count = 1,
+                .first_vertex = primitive.first_vertex,
+                .first_instance = 0
+            });
+        }
+    }
+}
+
+void Model::draw(daxa::CommandList & cmd_list, DrawPush& push_constant) {
+    for (auto & primitive : primitives) {
+        push_constant.face_buffer = vertex_buffer_address;
+        push_constant.material_info = material_buffer_addresses[primitive.material_index];
+        cmd_list.push_constant(push_constant);
 
         if (primitive.index_count > 0) {
             cmd_list.draw_indexed({
