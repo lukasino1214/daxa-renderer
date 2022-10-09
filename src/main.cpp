@@ -356,7 +356,6 @@ struct App : AppWindow<App> {
 
     void setup() {
         models.push_back(Model::load(device, "assets/models/Sponza/Sponza.gltf"));
-        //models.push_back(Model::load(device, "assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf"));
 
         std::cout << "Loading models done!" << std::endl;
 
@@ -379,19 +378,19 @@ struct App : AppWindow<App> {
         lights_info.point_lights[0] = PointLight {
             .position = { 0.0f, -1.0f, 0.0f },
             .color = { 1.0f, 0.0f, 0.0f },
-            .intensity = 128.0f,
+            .intensity = 64.0f,
         };
 
         lights_info.point_lights[1] = PointLight {
             .position = { 0.0f, -1.0f, 20.0f },
             .color = { 0.0f, 0.0f, 1.0f },
-            .intensity = 128.0f,
+            .intensity = 64.0f,
         };
 
         lights_info.point_lights[2] = PointLight {
             .position = { 0.0f, -1.0f, -20.0f },
             .color = { 0.0f, 1.0f, 0.0f },
-            .intensity = 128.0f,
+            .intensity = 64.0f,
         };
 
         {

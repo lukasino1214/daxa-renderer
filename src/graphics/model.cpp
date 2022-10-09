@@ -132,49 +132,6 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
         material_infos.push_back(std::move(material_info));
     }
 
-    /*auto cmd_list = device.create_command_list({
-        .debug_name = APPNAME_PREFIX("cmd_list"),
-    });
-
-
-    {
-        daxa::BufferId material_staging_buffer = device.create_buffer({
-            .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-            .size = sizeof(MaterialInfo),
-        });
-        cmd_list.destroy_buffer_deferred(material_staging_buffer);
-
-        for(usize i = 0; i < material_infos.size(); i++) {
-            cmd_list.pipeline_barrier({
-                .awaited_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
-                .waiting_pipeline_access = daxa::AccessConsts::HOST_WRITE,
-            });
-
-            daxa::BufferId material_info_buffer = device.create_buffer({
-                .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-                .size = sizeof(MaterialInfo),
-            });
-
-            auto buffer_ptr = device.map_memory_as<MaterialInfo>(material_staging_buffer);
-            std::memcpy(buffer_ptr, &material_infos[i], sizeof(MaterialInfo));
-            device.unmap_memory(material_staging_buffer);
-
-            cmd_list.pipeline_barrier({
-                .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
-                .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
-            });
-
-            cmd_list.copy_buffer_to_buffer({
-                .src_buffer = material_staging_buffer,
-                .dst_buffer = material_info_buffer,
-                .size = static_cast<u32>(sizeof(MaterialInfo)),
-            });
-
-            material_buffers.push_back(material_info_buffer);
-            material_buffer_addresses.push_back(device.buffer_reference(material_info_buffer));
-        }
-    }*/
-
     for(usize i = 0; i < material_infos.size(); i++) {
         daxa::BufferId material_staging_buffer = device.create_buffer({
             .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,

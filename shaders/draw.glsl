@@ -87,85 +87,16 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
+/*vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    if(cosTheta>1.0)
+        cosTheta=1.0;
+    float p=pow(1.0 - cosTheta, 5.0);
+    return F0 + (1.0 - F0) * p;
+}*/
 // ----------------------------------------------------------------------------
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
-
-/*void main() {
-    //out_color = f32vec4(get_texture(push_constant.albedo, v_uv).rgb, 1);
-    LightsInfo lights = read_buffer(LightsInfo, push_constant.lights_info_buffer);
-    MaterialInfo material_info = read_buffer(MaterialInfo, push_constant.material_info);
-
-    vec3 N = getNormalFromMap(material_info.normal_map);
-
-    f32vec3 albedo = get_texture(material_info.albedo, v_uv).rgb;
-    f32vec3 emissive = get_texture(material_info.emissive_map, v_uv).rgb;
-    f32vec2 metallic_roughness = get_texture(material_info.metallic_roughness, v_uv).gb;
-    f32 metallic  = metallic_roughness.y;
-    f32 roughness = metallic_roughness.x;
-    f32 ao = 1.0;
-
-    //vec3 N = v_normal;
-    vec3 V = normalize(v_camera_position - v_position);
-    vec3 R = reflect(-V, N);
-
-    vec3 F0 = vec3(0.04); 
-    F0 = mix(F0, albedo, metallic);
-
-    vec3 Lo = vec3(0.0);
-    for(int i = 0; i < lights.num_point_lights; i++)  {
-        vec3 L = normalize(lights.point_lights[i].position.xyz - v_position);
-        vec3 H = normalize(V + L);
-        float distance = length(lights.point_lights[i].position.xyz - v_position);
-        float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = lights.point_lights[i].color.xyz * lights.point_lights[i].intensity * attenuation;
-
-        float NDF = DistributionGGX(N, H, roughness);   
-        float G   = GeometrySmith(N, V, L, roughness);      
-        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-           
-        vec3 numerator    = NDF * G * F; 
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; // + 0.0001 to prevent divide by zero
-        vec3 specular = numerator / denominator;
-
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-
-        kD *= 1.0 - metallic;	  
-
-        float NdotL = max(dot(N, L), 0.0);        
-
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
-    }
-
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-
-    vec3 kS = F;
-    vec3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;
-
-    vec3 irradiance = get_cube_map(push_constant.irradiance_map, N).rgb;
-    vec3 diffuse      = irradiance * albedo;
-
-    const float MAX_REFLECTION_LOD = 4.0;
-    vec3 prefilteredColor = get_cube_map_lod(push_constant.prefilter_map, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf  = get_texture(push_constant.brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
-
-    vec3 ambient = (kD * diffuse + specular) * ao;
-
-    vec3 color = ambient + Lo;
-
-    if(material_info.has_emissive_map == 1) {
-        color += emissive;
-    }
-
-    // HDR tonemapping
-    color = color / (color + vec3(1.0));
-
-    out_color = vec4(color, 1.0);
-}*/
 
 void main() {
     LightsInfo lights = read_buffer(LightsInfo, push_constant.lights_info_buffer);

@@ -14,6 +14,7 @@ project(daxa-renderer)
 find_package(daxa CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
+find_package(EnTT CONFIG REQUIRED)
 find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 
 add_executable(${PROJECT_NAME} 
@@ -26,8 +27,15 @@ add_executable(${PROJECT_NAME}
     "src/graphics/camera.cpp"
     "src/systems/ibl_renderer.hpp"
     "src/systems/ibl_renderer.cpp"
+    "src/data/scene.hpp"
+    "src/data/scene.cpp"
+    "src/data/entity.hpp"
+    "src/data/entity.cpp"
+    "src/data/UUID.hpp"
+    "src/data/UUID.cpp"
+    "src/data/components.hpp"
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw)
+target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT)
 target_include_directories(${PROJECT_NAME} PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
