@@ -99,7 +99,7 @@ struct App : AppWindow<App> {
         },
         .raster = {
             .polygon_mode = daxa::PolygonMode::FILL,
-            .face_culling = daxa::FaceCullFlagBits::BACK_BIT,
+            .face_culling = daxa::FaceCullFlagBits::FRONT_BIT,
         },
         .push_constant_size = sizeof(DrawPush),
         .debug_name = APPNAME_PREFIX("raster_pipeline"),
@@ -116,8 +116,7 @@ struct App : AppWindow<App> {
     daxa::BinarySemaphore acquire_semaphore = device.create_binary_semaphore({.debug_name = APPNAME_PREFIX("acquire_semaphore")});
     daxa::BinarySemaphore present_semaphore = device.create_binary_semaphore({.debug_name = APPNAME_PREFIX("present_semaphore")});
 
-    //glm::mat4 m = glm::translate(glm::mat4(1.0f), {0.0f, 5.0f, 0.0f}) * glm::toMat4(glm::quat({glm::radians(90.0f), glm::radians(0.0f), glm::radians(180.0f)})) * glm::scale(glm::mat4(1.0f), {1.03f, 1.03f, 1.03f});
-    glm::mat4 m = glm::translate(glm::mat4(1.0f), {0.0f, 5.0f, 0.0f}) * glm::toMat4(glm::quat({0.0f, glm::radians(90.0f), glm::radians(180.0f)})) * glm::scale(glm::mat4(1.0f), {0.03f, 0.03f, 0.03f});
+    glm::mat4 m = glm::translate(glm::mat4(1.0f), {0.0f, -5.0f, 0.0f}) * glm::toMat4(glm::quat({0.0f, glm::radians(90.0f), glm::radians(0.0f)})) * glm::scale(glm::mat4(1.0f), {0.03f, 0.03f, 0.03f});
 
     u32 current_camera = 0;
     std::vector<ControlledCamera3D> cameras{2};
@@ -304,6 +303,14 @@ struct App : AppWindow<App> {
                 .clear_value = daxa::DepthValue{1.0f, 0},
             }},
             .render_area = {.x = 0, .y = 0, .width = size_x, .height = size_y},
+        });
+        cmd_list.set_viewport({
+            .x = 0.0f,
+            .y = static_cast<f32>(size_y),
+            .width = static_cast<f32>(size_x),
+            .height = -static_cast<f32>(size_y),
+            .min_depth = 0.0f,
+            .max_depth = 1.0f 
         });
         cmd_list.set_pipeline(draw_pipeline);
 

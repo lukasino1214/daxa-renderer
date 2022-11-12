@@ -10,17 +10,19 @@
                 "dxc"
             ]
         },
-        "glfw3",
-        "glm",
-        "tinygltf",
-        "entt",
-        "yaml-cpp",
         {
             "name": "imgui",
             "features": [
                 "glfw-binding",
                 "docking-experimental"
             ]
-        }
+        },
+        "glfw3",
+        "glm",
+        "tinygltf",
+        "entt",
+        "yaml-cpp",
+        "meshoptimizer",
+        "openal-soft"
     ]
 }

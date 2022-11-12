@@ -34,15 +34,15 @@ struct Model {
     std::vector<MaterialInfo> material_infos;
     std::vector<daxa::BufferId> material_buffers;
     std::vector<u64> material_buffer_addresses;
-    std::vector<Texture> images;
-    Texture default_texture;
+    std::vector<std::unique_ptr<Texture>> images;
+    std::unique_ptr<Texture> default_texture;
     u64 vertex_buffer_address;
 
-    static Model load(daxa::Device & device, const std::filesystem::path & path);
+    static Model load(daxa::Device& device, const std::filesystem::path& path);
 
-    void bind_index_buffer(daxa::CommandList & cmd_list);
-    void draw(daxa::CommandList & cmd_list);
-    void draw(daxa::CommandList & cmd_list, DrawPush& push_constant);
+    void bind_index_buffer(daxa::CommandList& cmd_list);
+    void draw(daxa::CommandList& cmd_list);
+    void draw(daxa::CommandList& cmd_list, DrawPush& push_constant);
     
-    void destroy(daxa::Device & device);
+    void destroy(daxa::Device& device);
 };

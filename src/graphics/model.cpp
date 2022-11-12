@@ -14,7 +14,7 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
     std::vector<MaterialInfo> material_infos{};
     std::vector<daxa::BufferId> material_buffers;
     std::vector<u64> material_buffer_addresses;
-    std::vector<Texture> images{};
+    std::vector<std::unique_ptr<Texture>> images{};
 
     std::string warn, err;
     tinygltf::TinyGLTF loader;
@@ -60,10 +60,11 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
             buffer_size = image.image.size();
         }
 
-        images.push_back(Texture::load(device, image.width, image.height, buffer, get_image_type(model, image_index)));
+        std::unique_ptr<Texture> texture = std::make_unique<Texture>(device, image.width, image.height, buffer, get_image_type(model, image_index));
+        images.push_back(std::move(texture));
     }
 
-    Texture default_texture = Texture::load(device, "assets/textures/white.png");
+    std::unique_ptr<Texture> default_texture = std::make_unique<Texture>(device, "assets/textures/white.png");
 
     for(usize material_index = 0; material_index < model.materials.size(); material_index++) {
         tinygltf::Material& material = model.materials[material_index];
@@ -72,11 +73,11 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
         if(material.pbrMetallicRoughness.baseColorTexture.index != -1) {
             u32 texture_index = material.pbrMetallicRoughness.baseColorTexture.index;
             u32 image_index = model.textures[texture_index].source;
-            material_info.albedo = images[image_index].get_texture_id();
+            material_info.albedo = images[image_index]->get_texture_id();
             material_info.albedo_factor = { 1.0f, 1.0f, 1.0f, 1.0f };
             material_info.has_albedo = 1;
         } else {
-            material_info.albedo = default_texture.get_texture_id();
+            material_info.albedo = default_texture->get_texture_id();
             std::vector<f64>& vector = material.pbrMetallicRoughness.baseColorFactor;
             material_info.albedo_factor = { static_cast<f32>(vector[0]), static_cast<f32>(vector[1]), static_cast<f32>(vector[2]), static_cast<f32>(vector[3]) };
             material_info.has_albedo = 0;
@@ -85,12 +86,12 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
         if(material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1) {
             u32 texture_index = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
             u32 image_index = model.textures[texture_index].source;
-            material_info.metallic_roughness = images[image_index].get_texture_id();
+            material_info.metallic_roughness = images[image_index]->get_texture_id();
             material_info.has_metallic_roughness = 1;
             material_info.metallic = 1.0f;
             material_info.roughness = 1.0f;
         } else {
-            material_info.metallic_roughness = default_texture.get_texture_id();
+            material_info.metallic_roughness = default_texture->get_texture_id();
             material_info.has_metallic_roughness = 0;
             material_info.metallic = static_cast<f32>(material.pbrMetallicRoughness.metallicFactor);
             material_info.roughness = static_cast<f32>(material.pbrMetallicRoughness.roughnessFactor);
@@ -99,33 +100,33 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
         if(material.normalTexture.index != -1) {
             u32 texture_index = material.normalTexture.index;
             u32 image_index = model.textures[texture_index].source;
-            material_info.normal_map = images[image_index].get_texture_id();
+            material_info.normal_map = images[image_index]->get_texture_id();
             material_info.has_normal_map = 1;
         } else {
-            material_info.normal_map = default_texture.get_texture_id();
+            material_info.normal_map = default_texture->get_texture_id();
             material_info.has_normal_map = 0;
         }
 
         if(material.occlusionTexture.index != -1) {
             u32 texture_index = material.occlusionTexture.index;
             u32 image_index = model.textures[texture_index].source;
-            material_info.occlusion_map = images[image_index].get_texture_id();
+            material_info.occlusion_map = images[image_index]->get_texture_id();
             material_info.has_occlusion_map = 1;
         } else {
-            material_info.occlusion_map = default_texture.get_texture_id();
+            material_info.occlusion_map = default_texture->get_texture_id();
             material_info.has_occlusion_map = 0;
         }
 
         if(material.emissiveTexture.index != -1) {
             u32 texture_index = material.emissiveTexture.index;
             u32 image_index = model.textures[texture_index].source;
-            material_info.emissive_map = images[image_index].get_texture_id();
+            material_info.emissive_map = images[image_index]->get_texture_id();
             material_info.has_emissive_map = 1;
             material_info.emissive_factor = { 1.0f, 1.0f, 1.0f };
         } else {
             std::vector<f64>& vector = material.emissiveFactor;
             material_info.emissive_factor = { static_cast<f32>(vector[0]), static_cast<f32>(vector[1]), static_cast<f32>(vector[2]) };
-            material_info.emissive_map = default_texture.get_texture_id();
+            material_info.emissive_map = default_texture->get_texture_id();
             material_info.has_emissive_map = 0;
         }
 
@@ -365,7 +366,7 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
         .material_buffers = std::move(material_buffers),
         .material_buffer_addresses = std::move(material_buffer_addresses),
         .images = std::move(images),
-        .default_texture = default_texture,
+        .default_texture = std::move(default_texture),
         .vertex_buffer_address = device.buffer_reference(vertex_buffer),
     };
 }
@@ -373,10 +374,6 @@ Model Model::load(daxa::Device & device, const std::filesystem::path & path) {
 void Model::destroy(daxa::Device& device) {
     device.destroy_buffer(vertex_buffer);
     device.destroy_buffer(index_buffer);
-    for (auto & image : images) {
-        image.destroy(device);
-    }
-    default_texture.destroy(device);
     for (auto & buffer : material_buffers) {
         device.destroy_buffer(buffer);
     }

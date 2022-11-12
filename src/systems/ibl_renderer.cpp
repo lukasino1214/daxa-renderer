@@ -8,7 +8,7 @@
 #include <vector>
 
 IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipeline_compiler, daxa::Format swapchain_format) {
-    Model cube = Model::load(device, "assets/models/cube.gltf");
+    Model cube_model = Model::load(device, "assets/models/cube.gltf");
 
     daxa::ImageId BRDFLUT_image = device.create_image({
         .dimensions = 2,
@@ -126,9 +126,9 @@ IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipe
     {
         int width, height, channels;
 
-        //stbi_set_flip_vertically_on_load(1);
+        stbi_set_flip_vertically_on_load(1);
         void* data = stbi_load_16("assets/textures/newport_loft.hdr", &width, &height, &channels, STBI_rgb_alpha);
-
+        stbi_set_flip_vertically_on_load(0);
         u32 mip_levels_hdr = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
         daxa::ImageId hdr_image = device.create_image({
@@ -193,7 +193,7 @@ IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipe
             });
 
             auto image_info = device.info_image(hdr_image);
-            Texture::generate_mipmaps(cmd_list, image_info, hdr_image);
+            Texture::generate_mipmaps_s(cmd_list, image_info, hdr_image);
 
             cmd_list.complete();
             device.submit_commands({
@@ -314,15 +314,15 @@ IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipe
 
                 cmd_list.set_pipeline(equirectangular_to_cubemap_pipeline);
                 cmd_list.push_constant(PushData{
-                    .face_buffer = cube.vertex_buffer_address,
+                    .face_buffer = cube_model.vertex_buffer_address,
                     .hdr = {
                         .image_view_id = { hdr_image },
                         .sampler_id = hdr_sampler
                     },
                     .mvp = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 512.0f) * matrices[i]
                 });
-                cube.bind_index_buffer(cmd_list);
-                cube.draw(cmd_list);
+                cube_model.bind_index_buffer(cmd_list);
+                cube_model.draw(cmd_list);
 
                 cmd_list.end_renderpass();
                 cmd_list.pipeline_barrier_image_transition({
@@ -541,7 +541,7 @@ IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipe
 
                 cmd_list.set_pipeline(irradiance_cube_pipeline);
                 cmd_list.push_constant(PushData{
-                    .face_buffer = cube.vertex_buffer_address,
+                    .face_buffer = cube_model.vertex_buffer_address,
                     .env_map = {
                         .image_view_id = env_map_image_view,
                         .sampler_id = env_map_sampler
@@ -550,8 +550,8 @@ IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipe
                     .delta_theta = (0.5f * float(M_PI)) / 64.0f,
                     .mvp = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 512.0f) * matrices[i]
                 });
-                cube.bind_index_buffer(cmd_list);
-                cube.draw(cmd_list);
+                cube_model.bind_index_buffer(cmd_list);
+                cube_model.draw(cmd_list);
 
                 cmd_list.end_renderpass();
                 cmd_list.pipeline_barrier_image_transition({
@@ -767,7 +767,7 @@ IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipe
 
                 cmd_list.set_pipeline(prefilter_env_pipeline);
                 cmd_list.push_constant(PushData{
-                    .face_buffer = cube.vertex_buffer_address,
+                    .face_buffer = cube_model.vertex_buffer_address,
                     .env_map = {
                         .image_view_id = env_map_image_view,
                         .sampler_id = env_map_sampler
@@ -775,8 +775,8 @@ IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipe
                     .roughness = (float)j / (float)(prefiltered_cube_mip_levels - 1),
                     .mvp = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 512.0f) * matrices[i]
                 });
-                cube.bind_index_buffer(cmd_list);
-                cube.draw(cmd_list);
+                cube_model.bind_index_buffer(cmd_list);
+                cube_model.draw(cmd_list);
 
                 cmd_list.end_renderpass();
                 cmd_list.pipeline_barrier_image_transition({
@@ -894,7 +894,7 @@ IBLRenderer IBLRenderer::load(daxa::Device& device, daxa::PipelineCompiler& pipe
             .sampler_id = prefiltered_cube_sampler
         },
         .skybox_pipeline = skybox_pipeline,
-        .cube = cube
+        .cube = std::move(cube_model)
     };
 }
 
