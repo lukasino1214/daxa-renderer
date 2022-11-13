@@ -3,18 +3,19 @@
 
 #include "UUID.hpp"
 
-class Entity;
-class Scene {
-    public:
-         Scene();
-        ~Scene();
+namespace dare {
+    class Entity;
+    class Scene {
+        public:
+            Scene();
+            ~Scene();
 
-        Entity create_entity(const std::string &name = std::string());
-        Entity create_entity_with_UUID(UUID uuid, const std::string &name = std::string());
-        void destroy_entity(Entity entity);
-
-    private:
-        entt::registry registry;
-
-        friend Entity;
-};
+            Entity create_entity(const std::string &name = std::string());
+            Entity create_entity_with_UUID(UUID uuid, const std::string &name = std::string());
+            void destroy_entity(Entity entity);
+            void iterate(std::function<void(Entity)> fn);
+        private:
+            entt::registry registry;
+            friend Entity;
+    };
+}

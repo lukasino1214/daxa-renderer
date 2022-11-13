@@ -9,6 +9,14 @@
                 "dxc",
                 "fsr2"
             ]
+        },
+        {
+            "kind": "git",
+            "repository": "https://github.com/GabeRundlett/vcpkg-registry",
+            "baseline": "d0cbaba3d8b27c4b2c7b4c7d9ed20601ef13e8a9",
+            "packages": [
+                "glfw3"
+            ]
         }
     ]
 }

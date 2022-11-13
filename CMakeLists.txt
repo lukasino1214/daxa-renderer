@@ -16,9 +16,12 @@ find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
+find_package(yaml-cpp CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME} 
+add_executable(${PROJECT_NAME}
     "src/main.cpp" 
+    "src/graphics/window.hpp"
+    "src/graphics/window.cpp"
     "src/graphics/model.hpp"
     "src/graphics/model.cpp"
     "src/graphics/texture.hpp"
@@ -27,8 +30,12 @@ add_executable(${PROJECT_NAME}
     "src/graphics/camera.cpp"
     "src/systems/ibl_renderer.hpp"
     "src/systems/ibl_renderer.cpp"
+    "src/systems/physics.hpp"
+    "src/systems/physics.cpp"
     "src/data/scene.hpp"
     "src/data/scene.cpp"
+    "src/data/scene_serializer.hpp"
+    "src/data/scene_serializer.cpp"
     "src/data/entity.hpp"
     "src/data/entity.cpp"
     "src/data/UUID.hpp"
@@ -36,6 +43,13 @@ add_executable(${PROJECT_NAME}
     "src/data/components.hpp"
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT)
+set(TARGET_UNIT_TESTS OFF)
+set(TARGET_HELLO_WORLD OFF)
+set(TARGET_PERFORMANCE_TEST OFF)
+set(TARGET_SAMPLES OFF)
+set(TARGET_VIEWER OFF)
+add_subdirectory(vendor/JoltPhysics/Build)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT Jolt yaml-cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

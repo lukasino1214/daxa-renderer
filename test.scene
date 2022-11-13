@@ -1,0 +1,32 @@
+Scene: Untitled
+Entities:
+  - Entity: 13328947040150047602
+    TagComponent:
+      Tag: test 3
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - Entity: 16731754734848142387
+    TagComponent:
+      Tag: test 2
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - Entity: 13740948444192904535
+    TagComponent:
+      Tag: test 1
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - Entity: 14259701726645426398
+    TagComponent:
+      Tag: Sponza
+    TransformComponent:
+      Translation: [0, -5, 0]
+      Rotation: [0, 90, 0]
+      Scale: [0.0299999993, 0.0299999993, 0.0299999993]
+    ModelComponent:
+      Path: assets/models/Sponza/Sponza.gltf

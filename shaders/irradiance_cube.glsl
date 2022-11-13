@@ -1,5 +1,3 @@
-#version 450 core
-
 #include <shared.inl>
 #include <core.glsl>
 
