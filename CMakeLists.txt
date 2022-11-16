@@ -28,10 +28,11 @@ add_executable(${PROJECT_NAME}
     "src/graphics/texture.cpp"
     "src/graphics/camera.hpp"
     "src/graphics/camera.cpp"
+    "src/graphics/buffer.hpp"
     "src/systems/ibl_renderer.hpp"
     "src/systems/ibl_renderer.cpp"
-    "src/systems/physics.hpp"
-    "src/systems/physics.cpp"
+    "src/systems/rendering_system.hpp"
+    "src/systems/rendering_system.cpp"
     "src/data/scene.hpp"
     "src/data/scene.cpp"
     "src/data/scene_serializer.hpp"
@@ -41,15 +42,12 @@ add_executable(${PROJECT_NAME}
     "src/data/UUID.hpp"
     "src/data/UUID.cpp"
     "src/data/components.hpp"
+    "src/utils/utils.hpp"
+    "src/utils/utils.cpp"
+    "src/panels/scene_hiearchy.hpp"    
+    "src/panels/scene_hiearchy.cpp"
 )
 
-set(TARGET_UNIT_TESTS OFF)
-set(TARGET_HELLO_WORLD OFF)
-set(TARGET_PERFORMANCE_TEST OFF)
-set(TARGET_SAMPLES OFF)
-set(TARGET_VIEWER OFF)
-add_subdirectory(vendor/JoltPhysics/Build)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT Jolt yaml-cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT yaml-cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

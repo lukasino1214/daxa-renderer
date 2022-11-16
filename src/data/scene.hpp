@@ -4,8 +4,8 @@
 #include "UUID.hpp"
 
 namespace dare {
-    class Entity;
-    class Scene {
+    struct Entity;
+    struct Scene {
         public:
             Scene();
             ~Scene();

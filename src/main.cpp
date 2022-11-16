@@ -1,17 +1,8 @@
-#include "graphics/window.hpp"
 
-#include <daxa/context.hpp>
 #include <daxa/daxa.hpp>
 #include <thread>
 #include <iostream>
 #include <cmath>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/quaternion.hpp>
-
-#define APPNAME "Daxa Template App"
-#define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
 
 #include <daxa/utils/imgui.hpp>
 #include <imgui_impl_glfw.h>
@@ -23,12 +14,14 @@ using namespace daxa::types;
 using Clock = std::chrono::high_resolution_clock;
 
 #include "graphics/model.hpp"
+#include "graphics/buffer.hpp"
 #include "graphics/camera.hpp"
-#include "systems/ibl_renderer.hpp"
-#include "data/scene.hpp"
+#include "graphics/window.hpp"
 #include "data/entity.hpp"
 #include "data/scene_serializer.hpp"
-#include "systems/physics.hpp"
+#include "data/scene.hpp"
+#include "systems/ibl_renderer.hpp"
+#include "panels/scene_hiearchy.hpp"
 
 #define DAXA_GLSL 1
 
@@ -121,26 +114,8 @@ namespace dare {
         u32 current_camera = 0;
         std::vector<ControlledCamera3D> cameras{2};
 
-        daxa::BufferId camera_info_buffer = device.create_buffer({
-            .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-            .size = static_cast<u32>(sizeof(CameraInfo)),
-        });
-
-        u64 camera_info_buffer_address = device.buffer_reference(camera_info_buffer);
-
-        daxa::BufferId object_info_buffer = device.create_buffer({
-            .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-            .size = static_cast<u32>(sizeof(ObjectInfo)),
-        });
-
-        u64 object_info_buffer_address = device.buffer_reference(object_info_buffer);
-
-        daxa::BufferId lights_info_buffer = device.create_buffer({
-            .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-            .size = static_cast<u32>(sizeof(LightsInfo)),
-        });
-
-        u64 lights_info_buffer_address = device.buffer_reference(lights_info_buffer);
+        Buffer<CameraInfo> camera_info_buffer = Buffer<CameraInfo>(device);
+        Buffer<LightsInfo> lights_info_buffer = Buffer<LightsInfo>(device);
 
         std::unique_ptr<IBLRenderer> ibl_system = std::make_unique<IBLRenderer>(device, pipeline_compiler, swapchain.get_format());
 
@@ -152,8 +127,8 @@ namespace dare {
         u32 viewport_size_x = 1280, viewport_size_y = 720;
         bool resized = true;
 
-        std::shared_ptr<Scene> scene = std::make_shared<Scene>();
-        std::unique_ptr<Physics> physics = std::make_unique<Physics>();
+        std::shared_ptr<Scene> scene;
+        std::shared_ptr<SceneHiearchyPanel> scene_hiearchy;
 
         App() = default;
 
@@ -161,12 +136,7 @@ namespace dare {
             device.wait_idle();
             device.collect_garbage();
             device.destroy_image(depth_image);
-            device.destroy_buffer(camera_info_buffer);
-            device.destroy_buffer(object_info_buffer);
-            device.destroy_buffer(lights_info_buffer);
             ImGui_ImplGlfw_Shutdown();
-
-            //physics->cleanup();
         }
 
         bool update() {
@@ -188,7 +158,7 @@ namespace dare {
         void ui_update() {
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
-
+            
             // Debug
             {
                 ImGui::Begin("Debug");
@@ -215,7 +185,7 @@ namespace dare {
 
             // Scene Hiearchy
 
-            {
+            /*{
                 ImGui::Begin("Scene Hiearchy");
                 scene->iterate([](Entity entity){
                     ImGui::Text("Name: %s", entity.get_component<TagComponent>().tag.c_str());
@@ -224,6 +194,8 @@ namespace dare {
                 ImGui::End();
             }
 
+*/
+            scene_hiearchy->draw();
             ImGui::Render();
         }
 
@@ -234,7 +206,30 @@ namespace dare {
 
             ui_update();
 
-            //physics->update();
+            {
+                auto cmd_list = device.create_command_list({
+                    .debug_name = APPNAME_PREFIX("updating object info of entities"),
+                });
+
+                scene->iterate([&](Entity entity) {
+                    auto& comp = entity.get_component<TransformComponent>();
+                    if(comp.is_dirty) {
+                        auto m = comp.calculate_matrix();
+                        auto n = comp.calculate_normal_matrix();
+                        comp.object_info->update(cmd_list, ObjectInfo {
+                            .model_matrix = *reinterpret_cast<const f32mat4x4 *>(&m),
+                            .normal_matrix = *reinterpret_cast<const f32mat4x4 *>(&n)
+                        });
+
+                        comp.is_dirty = false;
+                    }
+                });
+
+                cmd_list.complete();
+                device.submit_commands({
+                    .command_lists = {std::move(cmd_list)}
+                });
+            }
 
             cameras[current_camera].camera.resize(static_cast<i32>(size_x), static_cast<i32>(size_y));
             cameras[current_camera].camera.set_pos(cameras[current_camera].pos);
@@ -260,34 +255,15 @@ namespace dare {
             });
 
             {
-                daxa::BufferId staging_buffer = device.create_buffer({
-                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                    .size = static_cast<u32>(sizeof(CameraInfo)),
-                });
-                cmd_list.destroy_buffer_deferred(staging_buffer);
-
                 glm::mat4 view = cameras[current_camera].camera.get_view();
+                
                 CameraInfo camera_info {
                     .projection_matrix = *reinterpret_cast<const f32mat4x4*>(&cameras[current_camera].camera.proj_mat),
                     .view_matrix = *reinterpret_cast<const f32mat4x4*>(&view),
                     .position = *reinterpret_cast<const f32vec3*>(&cameras[current_camera].pos)
                 };
-                auto staging_buffer_ptr = device.map_memory_as<u8>(staging_buffer);
-                std::memcpy(staging_buffer_ptr, &camera_info, sizeof(CameraInfo));
-                device.unmap_memory(staging_buffer);
-                cmd_list.pipeline_barrier({
-                    .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
-                    .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
-                });
-                cmd_list.copy_buffer_to_buffer({
-                    .src_buffer = staging_buffer,
-                    .dst_buffer = camera_info_buffer,
-                    .size = sizeof(CameraInfo),
-                });
-                cmd_list.pipeline_barrier({
-                    .awaited_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
-                    .waiting_pipeline_access = daxa::AccessConsts::VERTEX_SHADER_READ,
-                });
+
+                camera_info_buffer.update(cmd_list, camera_info);
             }
 
             cmd_list.pipeline_barrier_image_transition({
@@ -334,9 +310,9 @@ namespace dare {
                     auto& model = entity.get_component<ModelComponent>().model;
 
                     DrawPush push_constant;
-                    push_constant.camera_info_buffer = camera_info_buffer_address;
-                    push_constant.object_info_buffer = object_info_buffer_address;
-                    push_constant.lights_info_buffer = lights_info_buffer_address;
+                    push_constant.camera_info_buffer = camera_info_buffer.buffer_address;
+                    push_constant.object_info_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
+                    push_constant.lights_info_buffer = lights_info_buffer.buffer_address;
                     push_constant.irradiance_map = ibl_system->irradiance_cube;
                     push_constant.brdfLUT = ibl_system->BRDFLUT;
                     push_constant.prefilter_map = ibl_system->prefiltered_cube;
@@ -408,18 +384,10 @@ namespace dare {
 
             imgui_renderer = create_imgui_renderer();
 
-            std::cout << "Loading models done!" << std::endl;
-
-            scene->create_entity("test 1");
-            scene->create_entity("test 2");
-            scene->create_entity("test 3");
-
-            /*SceneSerializer::serialize(scene, "test.scene");*/
-
-            //physics->setup();
-            //physics->optimize();
+            scene = std::make_shared<Scene>();
 
             scene = SceneSerializer::deserialize(device, "test.scene");
+            std::cout << "Loading models done!" << std::endl;
 
             Entity sponza;
             scene->iterate([&](Entity entity){
@@ -431,19 +399,7 @@ namespace dare {
                 }
             });
 
-            {
-                glm::mat4 mat = sponza.get_component<TransformComponent>().calculate_matrix();
-                glm::mat4 normal_matrix = glm::transpose(glm::inverse(mat));
-
-                ObjectInfo object_info {
-                    .model_matrix = *reinterpret_cast<const f32mat4x4 *>(&mat),
-                    .normal_matrix = *reinterpret_cast<const f32mat4x4 *>(&normal_matrix)
-                };
-
-                auto staging_buffer_ptr = device.map_memory_as<u8>(object_info_buffer);
-                std::memcpy(staging_buffer_ptr, &object_info, sizeof(ObjectInfo));
-                device.unmap_memory(object_info_buffer);
-            }
+            scene_hiearchy = std::make_shared<SceneHiearchyPanel>(scene);
 
             LightsInfo lights_info;
             lights_info.num_point_lights = 3;
@@ -466,12 +422,7 @@ namespace dare {
                 .intensity = 64.0f,
             };
 
-            {
-                auto staging_buffer_ptr = device.map_memory_as<u8>(lights_info_buffer);
-                std::memcpy(staging_buffer_ptr, &lights_info, sizeof(LightsInfo));
-                device.unmap_memory(lights_info_buffer);
-
-            }
+            lights_info_buffer.update(lights_info);
 
             ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         }

@@ -6,6 +6,8 @@
 #define STBI_MSC_SECURE_CRT
 #include <tiny_gltf.h>
 
+#include <glm/gtc/type_ptr.hpp>
+
 namespace dare {
     Model::Model(daxa::Device& device, const std::filesystem::path& path) : device{device}, path{path} {
         auto timer = std::chrono::system_clock::now();

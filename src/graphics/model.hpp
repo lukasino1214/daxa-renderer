@@ -1,23 +1,12 @@
 #pragma once
 
 #include <daxa/daxa.hpp>
+#include <glm/glm.hpp>
+#include <vector>
 
 using namespace daxa::types;
 #include "../../shaders/shared.inl"
-
-#include <vector>
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/quaternion.hpp>
-
 #include "texture.hpp"
-
-using namespace daxa::types;
-
-#define APPNAME "Daxa Template App"
-#define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
 
 namespace dare {
     struct Primitive {

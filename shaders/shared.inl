@@ -3,6 +3,9 @@
 #define DAXA_SHADER_NO_NAMESPACE
 #include <daxa/daxa.inl>
 
+#define APPNAME "Daxa Renderer"
+#define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
+
 DAXA_DECL_BUFFER_STRUCT(DrawVertex, {
     f32vec3 position;
     f32vec3 normal;
@@ -38,8 +41,8 @@ DAXA_DECL_BUFFER_STRUCT(LightsInfo, {
 });
 
 struct TextureId {
-    daxa_ImageViewId image_view_id;
-    daxa_SamplerId sampler_id;
+    ImageViewId image_view_id;
+    SamplerId sampler_id;
 };
 
 DAXA_DECL_BUFFER_STRUCT(MaterialInfo, {

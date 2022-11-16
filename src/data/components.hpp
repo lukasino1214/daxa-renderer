@@ -4,8 +4,11 @@
 #include <memory>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include "UUID.hpp"
 #include "../graphics/model.hpp"
+#include "../graphics/buffer.hpp"
 
 namespace dare {
     struct IDComponent {
@@ -49,6 +52,8 @@ namespace dare {
         auto calculate_normal_matrix() const -> glm::mat4 {
             return glm::transpose(glm::inverse(calculate_matrix()));
         }
+
+        std::shared_ptr<Buffer<ObjectInfo>> object_info;
     };
 
     struct ModelComponent {

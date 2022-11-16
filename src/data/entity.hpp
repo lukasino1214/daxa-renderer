@@ -6,7 +6,7 @@
 #include <entt/entt.hpp>
 
 namespace dare {
-    class Entity {
+    struct Entity {
     public:
         Entity() = default;
         Entity(entt::entity _handle, Scene *_scene) : handle(_handle), scene(_scene) {}

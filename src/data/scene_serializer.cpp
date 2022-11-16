@@ -133,6 +133,10 @@ namespace dare {
 
         auto scene = std::make_shared<Scene>();
 
+        auto cmd_list = device.create_command_list({
+            .debug_name = "loading entities",
+        });
+
         auto scene_name = data["Scene"].as<std::string>();
         auto entities = data["Entities"];
         if(entities) {
@@ -152,6 +156,16 @@ namespace dare {
                     comp.translation = transform_component["Translation"].as<glm::vec3>();
                     comp.rotation = transform_component["Rotation"].as<glm::vec3>();
                     comp.scale = transform_component["Scale"].as<glm::vec3>();
+                    comp.object_info = std::make_shared<Buffer<ObjectInfo>>(device);
+
+                    auto m = comp.calculate_matrix();
+                    auto n = comp.calculate_normal_matrix();
+                    comp.object_info->update(cmd_list, ObjectInfo {
+                        .model_matrix = *reinterpret_cast<const f32mat4x4 *>(&m),
+                        .normal_matrix = *reinterpret_cast<const f32mat4x4 *>(&n)
+                    });
+                    
+                    comp.is_dirty = false;
                 }
 
                 auto model_component = entity["ModelComponent"];
@@ -161,6 +175,12 @@ namespace dare {
                 }
             }
         }
+
+        cmd_list.complete();
+        device.submit_commands({
+            .command_lists = {std::move(cmd_list)}
+        });
+        device.wait_idle();
 
         return scene;
     }
