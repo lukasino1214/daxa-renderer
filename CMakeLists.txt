@@ -46,6 +46,8 @@ add_executable(${PROJECT_NAME}
     "src/utils/utils.cpp"
     "src/panels/scene_hiearchy.hpp"    
     "src/panels/scene_hiearchy.cpp"
+    "src/panels/viewport_panel.hpp"    
+    "src/panels/viewport_panel.cpp"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT yaml-cpp)

@@ -23,6 +23,7 @@ using Clock = std::chrono::high_resolution_clock;
 #include "systems/ibl_renderer.hpp"
 #include "panels/scene_hiearchy.hpp"
 #include "systems/rendering_system.hpp"
+#include "panels/viewport_panel.hpp"
 
 #define DAXA_GLSL 1
 
@@ -47,6 +48,7 @@ namespace dare {
 
         std::shared_ptr<Scene> scene = SceneSerializer::deserialize(rendering_system->context.device, "test.scene");
         std::shared_ptr<SceneHiearchyPanel> scene_hiearchy = std::make_shared<SceneHiearchyPanel>(scene);
+        std::unique_ptr<ViewportPanel> viewport_panel = std::make_unique<ViewportPanel>();
 
         App() = default;
         ~App() = default;
@@ -70,6 +72,25 @@ namespace dare {
         void ui_update() {
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
+
+            {
+                ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+                ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground;
+                const ImGuiViewport *viewport = ImGui::GetMainViewport();
+                ImGui::SetNextWindowPos(viewport->WorkPos);
+                ImGui::SetNextWindowSize(viewport->WorkSize);
+                ImGui::SetNextWindowViewport(viewport->ID);
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+                window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+                window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+                ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+                ImGui::Begin("DockSpace Demo", nullptr, window_flags);
+                ImGui::PopStyleVar(3);
+                ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+                ImGui::End();
+            }
             
             // Debug
             {
@@ -103,6 +124,9 @@ namespace dare {
             }
 
             scene_hiearchy->draw();
+
+            viewport_panel->draw(rendering_system->color_image);
+
             ImGui::Render();
         }
 
@@ -115,18 +139,15 @@ namespace dare {
 
             scene->update();
 
-            cameras[current_camera].camera.resize(static_cast<i32>(size_x), static_cast<i32>(size_y));
+            if(viewport_panel->should_resize()) {
+                glm::vec2 size = viewport_panel->get_size();
+                cameras[current_camera].camera.resize(static_cast<i32>(size.x), static_cast<i32>(size.y));
+                on_resize(size.x, size.y);
+            }
+
             cameras[current_camera].camera.set_pos(cameras[current_camera].pos);
             cameras[current_camera].camera.set_rot(cameras[current_camera].rot.x, cameras[current_camera].rot.y);
             cameras[current_camera].update(delta_time);
-
-            /*if (pipeline_compiler.check_if_sources_changed(draw_pipeline)) {
-                auto new_pipeline = pipeline_compiler.recreate_raster_pipeline(draw_pipeline);
-                std::cout << new_pipeline.to_string() << std::endl;
-                if (new_pipeline.is_ok()) {
-                    draw_pipeline = new_pipeline.value();
-                }
-            }*/
 
             rendering_system->draw(scene, cameras[current_camera]);
         }
@@ -177,7 +198,7 @@ namespace dare {
         void on_resize(u32 sx, u32 sy) {
             window->minimized = (sx == 0 || sy == 0);
             if (!window->minimized) {
-                rendering_system->resize();
+                rendering_system->resize(sx, sy);
                 size_x = rendering_system->context.swapchain.get_surface_extent().x;
                 size_y = rendering_system->context.swapchain.get_surface_extent().y;
                 draw();

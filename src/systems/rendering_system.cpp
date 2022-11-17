@@ -50,6 +50,18 @@ namespace dare {
     
         this->camera_buffer = std::make_unique<Buffer<CameraInfo>>(this->context.device);
 
+        this->color_image = this->context.device.create_image({
+            .dimensions = 2,
+            .format = this->context.swapchain.get_format(),
+            .aspect = daxa::ImageAspectFlagBits::COLOR,
+            .size = { this->window->size_x, this->window->size_y, 1 },
+            .mip_level_count = 1,
+            .array_layer_count = 1,
+            .sample_count = 1,
+            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+            .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY
+        });
+
         this->depth_image = this->context.device.create_image({
             .dimensions = 2,
             .format = daxa::Format::D24_UNORM_S8_UINT,
@@ -83,6 +95,7 @@ namespace dare {
     RenderingSystem::~RenderingSystem() {
         this->context.device.wait_idle();
         this->context.device.collect_garbage();
+        this->context.device.destroy_image(color_image);
         this->context.device.destroy_image(depth_image);
         ImGui_ImplGlfw_Shutdown();
     }
@@ -121,6 +134,13 @@ namespace dare {
         });
 
         cmd_list.pipeline_barrier_image_transition({
+            .waiting_pipeline_access = daxa::AccessConsts::COLOR_ATTACHMENT_OUTPUT_WRITE,
+            .before_layout = daxa::ImageLayout::UNDEFINED,
+            .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+            .image_id = color_image,
+        });
+
+        cmd_list.pipeline_barrier_image_transition({
             .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
             .before_layout = daxa::ImageLayout::UNDEFINED,
             .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
@@ -128,10 +148,11 @@ namespace dare {
             .image_id = depth_image,
         });
 
+
         f32 factor = 32.0f;
         cmd_list.begin_renderpass({
             .color_attachments = {{
-                .image_view = swapchain_image.default_view(),
+                .image_view = color_image.default_view(),
                 .load_op = daxa::AttachmentLoadOp::CLEAR,
                 .clear_value = std::array<f32, 4>{0.2f / factor, 0.4f / factor, 1.0f / factor, 1.0f},
             }},
@@ -140,14 +161,14 @@ namespace dare {
                 .load_op = daxa::AttachmentLoadOp::CLEAR,
                 .clear_value = daxa::DepthValue{1.0f, 0},
             }},
-            .render_area = {.x = 0, .y = 0, .width = size_x, .height = size_y},
+            .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(size.x), .height = static_cast<u32>(size.y)},
         });
 
         cmd_list.set_viewport({
             .x = 0.0f,
-            .y = static_cast<f32>(size_y),
-            .width = static_cast<f32>(size_x),
-            .height = -static_cast<f32>(size_y),
+            .y = static_cast<f32>(size.y),
+            .width = static_cast<f32>(size.x),
+            .height = -static_cast<f32>(size.y),
             .min_depth = 0.0f,
             .max_depth = 1.0f 
         });
@@ -174,6 +195,13 @@ namespace dare {
 
         cmd_list.end_renderpass();
 
+        cmd_list.pipeline_barrier_image_transition({
+            .waiting_pipeline_access = daxa::AccessConsts::READ,
+            .before_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+            .after_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+            .image_id = color_image,
+        });
+
         imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, size_x, size_y);
 
         cmd_list.pipeline_barrier_image_transition({
@@ -198,14 +226,29 @@ namespace dare {
         });
     }
 
-    void RenderingSystem::resize() {
+    void RenderingSystem::resize(u32 sx, u32 sy) {
         this->context.swapchain.resize();
+        this->size = { static_cast<f32>(sx), static_cast<f32>(sy) };
+
         this->context.device.destroy_image(this->depth_image);
         this->depth_image = this->context.device.create_image({
             .format = daxa::Format::D24_UNORM_S8_UINT,
             .aspect = daxa::ImageAspectFlagBits::DEPTH | daxa::ImageAspectFlagBits::STENCIL,
-            .size = {this->context.swapchain.get_surface_extent().x, this->context.swapchain.get_surface_extent().y, 1},
+            .size = {static_cast<u32>(size.x), static_cast<u32>(size.y), 1},
             .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT,
+        });
+
+        this->context.device.destroy_image(this->color_image);
+        this->color_image = this->context.device.create_image({
+            .dimensions = 2,
+            .format = this->context.swapchain.get_format(),
+            .aspect = daxa::ImageAspectFlagBits::COLOR,
+            .size = {static_cast<u32>(size.x), static_cast<u32>(size.y), 1},
+            .mip_level_count = 1,
+            .array_layer_count = 1,
+            .sample_count = 1,
+            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+            .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY
         });
     }
 }
