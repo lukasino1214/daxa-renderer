@@ -40,7 +40,7 @@ struct SpotLight {
 #define MAX_LIGHTS 16
 
 struct LightsInfo {
-    f32 num_point_lights;
+    i32 num_point_lights;
     PointLight point_lights[MAX_LIGHTS];
 };
 

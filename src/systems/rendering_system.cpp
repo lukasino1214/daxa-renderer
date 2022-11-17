@@ -38,7 +38,6 @@ namespace dare {
 
         // setup imgui
         ImGui::CreateContext();
-        ImGui_ImplGlfw_InitForVulkan(window->glfw_window_ptr, true);
         imgui_renderer = daxa::ImGuiRenderer({
             .device = this->context.device,
             .pipeline_compiler = this->context.pipeline_compiler,
@@ -49,6 +48,8 @@ namespace dare {
 
         this->ibl_renderer = std::make_unique<IBLRenderer>(this->context.device, this->context.pipeline_compiler, this->context.swapchain.get_format());
     
+        this->camera_buffer = std::make_unique<Buffer<CameraInfo>>(this->context.device);
+
         this->depth_image = this->context.device.create_image({
             .dimensions = 2,
             .format = daxa::Format::D24_UNORM_S8_UINT,
@@ -86,15 +87,15 @@ namespace dare {
         ImGui_ImplGlfw_Shutdown();
     }
 
-    void RenderingSystem::draw(const std::shared_ptr<Scene>& scene, ControlledCamera3D& camera, Buffer<CameraInfo>& camera_info_buffer, Buffer<LightsInfo>& lights_info_buffer) {
+    void RenderingSystem::draw(const std::shared_ptr<Scene>& scene, ControlledCamera3D& camera) {
         auto swapchain_image = this->context.swapchain.acquire_next_image();
         if (swapchain_image.is_empty())
         {
             return;
         }
 
-        u32 size_x = this->window->size_x;
-        u32 size_y = this->window->size_y;
+        u32 size_x = this->context.swapchain.get_surface_extent().x;
+        u32 size_y = this->context.swapchain.get_surface_extent().y;
 
         auto cmd_list = this->context.device.create_command_list({
             .debug_name = APPNAME_PREFIX("cmd_list"),
@@ -109,7 +110,7 @@ namespace dare {
                 .position = *reinterpret_cast<const f32vec3*>(&camera.pos)
             };
 
-            camera_info_buffer.update(cmd_list, camera_info);
+            camera_buffer->update(cmd_list, camera_info);
         }
 
         cmd_list.pipeline_barrier_image_transition({
@@ -157,9 +158,9 @@ namespace dare {
                 auto& model = entity.get_component<ModelComponent>().model;
 
                 DrawPush push_constant;
-                push_constant.camera_info_buffer = camera_info_buffer.buffer_address;
+                push_constant.camera_info_buffer = camera_buffer->buffer_address;
                 push_constant.object_info_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
-                push_constant.lights_info_buffer = lights_info_buffer.buffer_address;
+                push_constant.lights_info_buffer = scene->lights_buffer->buffer_address;
                 push_constant.irradiance_map = this->ibl_renderer->irradiance_cube;
                 push_constant.brdfLUT = this->ibl_renderer->BRDFLUT;
                 push_constant.prefilter_map = this->ibl_renderer->prefiltered_cube;
@@ -194,6 +195,17 @@ namespace dare {
         this->context.device.present_frame({
             .wait_binary_semaphores = {this->context.swapchain.get_present_semaphore()},
             .swapchain = this->context.swapchain,
+        });
+    }
+
+    void RenderingSystem::resize() {
+        this->context.swapchain.resize();
+        this->context.device.destroy_image(this->depth_image);
+        this->depth_image = this->context.device.create_image({
+            .format = daxa::Format::D24_UNORM_S8_UINT,
+            .aspect = daxa::ImageAspectFlagBits::DEPTH | daxa::ImageAspectFlagBits::STENCIL,
+            .size = {this->context.swapchain.get_surface_extent().x, this->context.swapchain.get_surface_extent().y, 1},
+            .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT,
         });
     }
 }

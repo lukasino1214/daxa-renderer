@@ -99,6 +99,16 @@ namespace dare {
             out << YAML::EndMap;
         }
 
+        if(entity.has_component<LightComponent>()) {
+            out << YAML::Key << "LightComponent";
+            out << YAML::BeginMap;
+
+            out << YAML::Key << "Color" << YAML::Value << entity.get_component<LightComponent>().color;
+            out << YAML::Key << "Intensity" << YAML::Value << entity.get_component<LightComponent>().intensity;
+
+            out << YAML::EndMap;
+        }
+
         out << YAML::EndMap;
     }
 
@@ -131,11 +141,7 @@ namespace dare {
         if (!data["Scene"])
             throw std::runtime_error("Couldn't load scene");
 
-        auto scene = std::make_shared<Scene>();
-
-        auto cmd_list = device.create_command_list({
-            .debug_name = "loading entities",
-        });
+        auto scene = std::make_shared<Scene>(device);
 
         auto scene_name = data["Scene"].as<std::string>();
         auto entities = data["Entities"];
@@ -157,15 +163,6 @@ namespace dare {
                     comp.rotation = transform_component["Rotation"].as<glm::vec3>();
                     comp.scale = transform_component["Scale"].as<glm::vec3>();
                     comp.object_info = std::make_shared<Buffer<ObjectInfo>>(device);
-
-                    auto m = comp.calculate_matrix();
-                    auto n = comp.calculate_normal_matrix();
-                    comp.object_info->update(cmd_list, ObjectInfo {
-                        .model_matrix = *reinterpret_cast<const f32mat4x4 *>(&m),
-                        .normal_matrix = *reinterpret_cast<const f32mat4x4 *>(&n)
-                    });
-                    
-                    comp.is_dirty = false;
                 }
 
                 auto model_component = entity["ModelComponent"];
@@ -173,14 +170,15 @@ namespace dare {
                     auto model = std::make_shared<Model>(device, model_component["Path"].as<std::string>());
                     deserialized_entity.add_component<ModelComponent>(model);
                 }
+
+                auto light_component = entity["LightComponent"];
+                if(light_component) {
+                    auto& light = deserialized_entity.add_component<LightComponent>();
+                    light.color = light_component["Color"].as<glm::vec3>();
+                    light.intensity = light_component["Intensity"].as<f32>();
+                }
             }
         }
-
-        cmd_list.complete();
-        device.submit_commands({
-            .command_lists = {std::move(cmd_list)}
-        });
-        device.wait_idle();
 
         return scene;
     }

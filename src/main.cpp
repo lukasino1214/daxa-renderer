@@ -34,29 +34,19 @@ namespace dare {
         f64 last_frame = current_frame;
         f64 delta_time;
         u32 size_x = 800, size_y = 600;
+
         std::unique_ptr<Window> window = std::make_unique<Window>(APPNAME);
-
         std::unique_ptr<RenderingSystem> rendering_system = std::make_unique<RenderingSystem>(window);
-
-        static inline constexpr u64 FRAMES_IN_FLIGHT = 1;
-        u64 cpu_framecount = FRAMES_IN_FLIGHT - 1;
+        
+        u64 cpu_framecount = 0;
 
         u32 current_camera = 0;
         std::vector<ControlledCamera3D> cameras{2};
 
-        Buffer<CameraInfo> camera_info_buffer = Buffer<CameraInfo>(rendering_system->context.device);
-        Buffer<LightsInfo> lights_info_buffer = Buffer<LightsInfo>(rendering_system->context.device);
-
         bool paused = true;
 
-        ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-
-        u32 viewport_size_x = 1280, viewport_size_y = 720;
-        bool resized = true;
-
-        std::shared_ptr<Scene> scene;
-        std::shared_ptr<SceneHiearchyPanel> scene_hiearchy;
+        std::shared_ptr<Scene> scene = SceneSerializer::deserialize(rendering_system->context.device, "test.scene");
+        std::shared_ptr<SceneHiearchyPanel> scene_hiearchy = std::make_shared<SceneHiearchyPanel>(scene);
 
         App() = default;
         ~App() = default;
@@ -87,6 +77,13 @@ namespace dare {
                 ImGui::Text("CPU Frame Count: %i", static_cast<i32>(cpu_framecount));
                 ImGui::Text("Frame time: %f", delta_time);
                 ImGui::Text("Frame Per Second: %f", 1.0 / delta_time);
+                if(ImGui::Button("Save scene")) {
+                    SceneSerializer::serialize(scene, "test.scene");
+                }
+                if(ImGui::Button("Load scene")) {
+                    scene = SceneSerializer::deserialize(this->rendering_system->context.device, "test.scene");
+                    scene_hiearchy = std::make_shared<SceneHiearchyPanel>(scene);
+                }
                 ImGui::End();
             }
 
@@ -116,30 +113,7 @@ namespace dare {
 
             ui_update();
 
-            {
-                auto cmd_list = rendering_system->context.device.create_command_list({
-                    .debug_name = APPNAME_PREFIX("updating object info of entities"),
-                });
-
-                scene->iterate([&](Entity entity) {
-                    auto& comp = entity.get_component<TransformComponent>();
-                    if(comp.is_dirty) {
-                        auto m = comp.calculate_matrix();
-                        auto n = comp.calculate_normal_matrix();
-                        comp.object_info->update(cmd_list, ObjectInfo {
-                            .model_matrix = *reinterpret_cast<const f32mat4x4 *>(&m),
-                            .normal_matrix = *reinterpret_cast<const f32mat4x4 *>(&n)
-                        });
-
-                        comp.is_dirty = false;
-                    }
-                });
-
-                cmd_list.complete();
-                rendering_system->context.device.submit_commands({
-                    .command_lists = {std::move(cmd_list)}
-                });
-            }
+            scene->update();
 
             cameras[current_camera].camera.resize(static_cast<i32>(size_x), static_cast<i32>(size_y));
             cameras[current_camera].camera.set_pos(cameras[current_camera].pos);
@@ -154,7 +128,7 @@ namespace dare {
                 }
             }*/
 
-            rendering_system->draw(scene, cameras[current_camera], camera_info_buffer, lights_info_buffer);
+            rendering_system->draw(scene, cameras[current_camera]);
         }
 
         void setup() {
@@ -176,35 +150,7 @@ namespace dare {
                 app.on_resize(static_cast<u32>(w), static_cast<u32>(h));
             });
 
-            scene = std::make_shared<Scene>();
-
-            scene = SceneSerializer::deserialize(rendering_system->context.device, "test.scene");
-            std::cout << "Loading models done!" << std::endl;
-
-            scene_hiearchy = std::make_shared<SceneHiearchyPanel>(scene);
-
-            LightsInfo lights_info;
-            lights_info.num_point_lights = 3;
-
-            lights_info.point_lights[0] = PointLight {
-                .position = { 0.0f, -1.0f, 0.0f },
-                .color = { 1.0f, 0.0f, 0.0f },
-                .intensity = 64.0f,
-            };
-
-            lights_info.point_lights[1] = PointLight {
-                .position = { 0.0f, -1.0f, 20.0f },
-                .color = { 0.0f, 0.0f, 1.0f },
-                .intensity = 64.0f,
-            };
-
-            lights_info.point_lights[2] = PointLight {
-                .position = { 0.0f, -1.0f, -20.0f },
-                .color = { 0.0f, 1.0f, 0.0f },
-                .intensity = 64.0f,
-            };
-
-            lights_info_buffer.update(lights_info);
+            ImGui_ImplGlfw_InitForVulkan(window->glfw_window_ptr, true);
         }
 
         void on_mouse_button(i32, i32) {}
@@ -231,16 +177,9 @@ namespace dare {
         void on_resize(u32 sx, u32 sy) {
             window->minimized = (sx == 0 || sy == 0);
             if (!window->minimized) {
-                rendering_system->context.swapchain.resize();
+                rendering_system->resize();
                 size_x = rendering_system->context.swapchain.get_surface_extent().x;
                 size_y = rendering_system->context.swapchain.get_surface_extent().y;
-                rendering_system->context.device.destroy_image(rendering_system->depth_image);
-                rendering_system->depth_image = rendering_system->context.device.create_image({
-                    .format = daxa::Format::D24_UNORM_S8_UINT,
-                    .aspect = daxa::ImageAspectFlagBits::DEPTH | daxa::ImageAspectFlagBits::STENCIL,
-                    .size = {size_x, size_y, 1},
-                    .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT,
-                });
                 draw();
             }
         }

@@ -57,6 +57,11 @@ namespace dare {
                 ImGui::Text("File path: %s", comp.model->path.c_str());
             });
 
+            draw_component<LightComponent>("LightComponent", selected_entity, [](LightComponent& comp) {
+                ImGui::ColorPicker3("Color", &comp.color.x);
+                ImGui::DragFloat("Intensity", &comp.intensity);
+            });
+
         } else {
             ImGui::Text("Invalid Entity");
         }

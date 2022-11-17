@@ -63,4 +63,12 @@ namespace dare {
         ModelComponent(const ModelComponent&) = default;
         ModelComponent(const std::shared_ptr<Model> &_model) : model{_model} {};
     };
+
+    struct LightComponent {
+        glm::vec3 color = { 1.0f, 1.0f, 1.0f };
+        f32 intensity = 32.0f;
+
+        LightComponent() = default;
+        LightComponent(const LightComponent&) = default;
+    };
 }

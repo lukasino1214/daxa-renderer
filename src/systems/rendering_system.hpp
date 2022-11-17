@@ -22,10 +22,12 @@ namespace dare {
         daxa::RasterPipeline draw_pipeline;
 
         daxa::ImageId depth_image = {};
+        std::unique_ptr<Buffer<CameraInfo>> camera_buffer;
 
         RenderingSystem(std::unique_ptr<Window>& window);
         ~RenderingSystem();
 
-        void draw(const std::shared_ptr<Scene>& scene, ControlledCamera3D& camera, Buffer<CameraInfo>& camera_info_buffer, Buffer<LightsInfo>& lights_info_buffer);
+        void draw(const std::shared_ptr<Scene>& scene, ControlledCamera3D& camera);
+        void resize();
     };
 }
