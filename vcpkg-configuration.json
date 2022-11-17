@@ -2,15 +2,8 @@
     "registries": [
         {
             "kind": "git",
-            "repository": "https://github.com/lukasino1214/vcpkg-registry",
-            "baseline": "7fd737e866c438b3a16b98b847a838096106d364",
-            "packages": [
-            ]
-        },
-        {
-            "kind": "git",
             "repository": "https://github.com/GabeRundlett/vcpkg-registry",
-            "baseline": "dc37bf39dc30dc16dc14d2ff409c4000a377470c",
+            "baseline": "ceeb47a9c14c279648211558a735345bdd3b3f5c",
             "packages": [
                 "glfw3",
                 "daxa",

@@ -11,7 +11,7 @@ out gl_PerVertex {
 };
 
 void main() {
-    DrawVertex vertex = read_buffer(DrawVertex, push_constant.face_buffer + gl_VertexIndex * (4 * 8));
+    DrawVertex vertex = push_constant.face_buffer.vertices[gl_VertexIndex];
     v_position = vertex.position.xyz;
     gl_Position = f32vec4(push_constant.mvp * f32vec4(v_position.xyz, 1)).xyww;
 }

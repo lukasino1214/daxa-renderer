@@ -20,9 +20,8 @@ namespace dare {
             .size = static_cast<u32>(width * height * sizeof(u8) * 4),
         });
 
-        auto staging_buffer_ptr = device.map_memory_as<u8>(staging_buffer);
+        auto staging_buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
         std::memcpy(staging_buffer_ptr, data, width * height * sizeof(u8) * 4);
-        device.unmap_memory(staging_buffer);
 
         auto cmd_list = device.create_command_list({});
         cmd_list.pipeline_barrier({
@@ -112,9 +111,8 @@ namespace dare {
             .size = static_cast<u32>(width * height * sizeof(u8) * 4),
         });
 
-        auto staging_buffer_ptr = device.map_memory_as<u8>(staging_buffer);
+        auto staging_buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
         std::memcpy(staging_buffer_ptr, data, width * height * sizeof(u8) * 4);
-        device.unmap_memory(staging_buffer);
 
         stbi_image_free(data);
 
@@ -185,9 +183,9 @@ namespace dare {
 
     void Texture::generate_mipmaps(daxa::CommandList& cmd_list, const daxa::ImageInfo& image_info, const daxa::ImageId& image) {
         std::array<i32, 3> mip_size = {
-            static_cast<i32>(image_info.size[0]),
-            static_cast<i32>(image_info.size[1]),
-            static_cast<i32>(image_info.size[2]),
+            static_cast<i32>(image_info.size.x),
+            static_cast<i32>(image_info.size.y),
+            static_cast<i32>(image_info.size.z),
         };
         for (u32 i = 0; i < image_info.mip_level_count - 1; ++i) {
             cmd_list.pipeline_barrier_image_transition({
@@ -279,9 +277,9 @@ namespace dare {
 
     void Texture::generate_mipmaps_s(daxa::CommandList& cmd_list, const daxa::ImageInfo& image_info, const daxa::ImageId& image) {
         std::array<i32, 3> mip_size = {
-            static_cast<i32>(image_info.size[0]),
-            static_cast<i32>(image_info.size[1]),
-            static_cast<i32>(image_info.size[2]),
+            static_cast<i32>(image_info.size.x),
+            static_cast<i32>(image_info.size.y),
+            static_cast<i32>(image_info.size.z),
         };
         for (u32 i = 0; i < image_info.mip_level_count - 1; ++i) {
             cmd_list.pipeline_barrier_image_transition({

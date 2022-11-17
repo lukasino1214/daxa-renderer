@@ -10,8 +10,8 @@
 #include <daxa/daxa.hpp>
 
 namespace dare {
-    IBLRenderer::IBLRenderer(daxa::Device& device, daxa::PipelineCompiler& pipeline_compiler, daxa::Format swapchain_format) : device{device},
-        skybox_pipeline{pipeline_compiler.create_raster_pipeline({
+    IBLRenderer::IBLRenderer(daxa::Device& device, daxa::PipelineCompiler& pipeline_compiler, daxa::Format swapchain_format) : device{device} {
+        skybox_pipeline = pipeline_compiler.create_raster_pipeline({
             .vertex_shader_info = {.source = daxa::ShaderFile{"skybox_draw.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
             .fragment_shader_info = {.source = daxa::ShaderFile{"skybox_draw.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
             .color_attachments = {{.format = swapchain_format, .blend = {.blend_enable = true, .src_color_blend_factor = daxa::BlendFactor::SRC_ALPHA, .dst_color_blend_factor = daxa::BlendFactor::ONE_MINUS_SRC_ALPHA}}},
@@ -25,7 +25,7 @@ namespace dare {
                 .polygon_mode = daxa::PolygonMode::FILL,
             },
             .push_constant_size = sizeof(SkyboxDrawPush)
-        }).value()} {
+        }).value();
         cube_model = std::make_unique<Model>(device, "assets/models/cube.gltf");
 
         daxa::ImageId BRDFLUT_image = device.create_image({
@@ -166,9 +166,8 @@ namespace dare {
                 .size = static_cast<u32>(width * height * sizeof(u16) * 4),
             });
 
-            auto staging_buffer_ptr = device.map_memory_as<u8>(staging_buffer);
+            auto staging_buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
             std::memcpy(staging_buffer_ptr, data, width * height * sizeof(u16) * 4);
-            device.unmap_memory(staging_buffer);
 
             stbi_image_free(data);
 

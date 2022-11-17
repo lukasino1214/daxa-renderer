@@ -10,9 +10,9 @@ layout(location = 2) out f32vec3 v_position;
 layout(location = 3) out f32vec3 v_camera_position;
 
 void main() {
-    DrawVertex vertex = read_buffer(DrawVertex, push_constant.face_buffer + gl_VertexIndex * (4 * 8));
-    ObjectInfo object = read_buffer(ObjectInfo, push_constant.object_info_buffer);
-    CameraInfo camera = read_buffer(CameraInfo, push_constant.camera_info_buffer);
+    DrawVertex vertex = push_constant.face_buffer.vertices[gl_VertexIndex];
+    ObjectInfo object = push_constant.object_info_buffer.info;
+    CameraInfo camera = push_constant.camera_info_buffer.info;
     f32vec3 position = (object.model_matrix * f32vec4(vertex.position.xyz, 1)).xyz;
     gl_Position = camera.projection_matrix * camera.view_matrix * f32vec4(position.xyz, 1);
     //gl_Position = push_constant.vp * f32vec4(position.xyz, 1);
@@ -97,8 +97,8 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 }
 
 void main() {
-    LightsInfo lights = read_buffer(LightsInfo, push_constant.lights_info_buffer);
-    MaterialInfo material_info = read_buffer(MaterialInfo, push_constant.material_info);
+    LightsInfo lights = push_constant.lights_info_buffer.info;
+    MaterialInfo material_info = push_constant.material_info.info;
 
     f32vec3 albedo = get_texture(material_info.albedo, v_uv).rgb;
     f32vec3 emissive = get_texture(material_info.emissive_map, v_uv).rgb;

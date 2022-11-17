@@ -6,10 +6,14 @@
 #define APPNAME "Daxa Renderer"
 #define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
 
-DAXA_DECL_BUFFER_STRUCT(DrawVertex, {
+struct DrawVertex {
     f32vec3 position;
     f32vec3 normal;
     f32vec2 uv;
+};
+
+DAXA_DECL_BUFFER(VertexBuffer, {
+    DrawVertex vertices[];
 });
 
 struct DirectionalLight {
@@ -35,9 +39,13 @@ struct SpotLight {
 
 #define MAX_LIGHTS 16
 
-DAXA_DECL_BUFFER_STRUCT(LightsInfo, {
+struct LightsInfo {
     f32 num_point_lights;
     PointLight point_lights[MAX_LIGHTS];
+};
+
+DAXA_DECL_BUFFER(Lights, {
+    LightsInfo info;
 });
 
 struct TextureId {
@@ -45,7 +53,7 @@ struct TextureId {
     SamplerId sampler_id;
 };
 
-DAXA_DECL_BUFFER_STRUCT(MaterialInfo, {
+struct MaterialInfo {
     TextureId albedo;
     u32 has_albedo;
     f32vec4 albedo_factor;
@@ -60,25 +68,42 @@ DAXA_DECL_BUFFER_STRUCT(MaterialInfo, {
     TextureId emissive_map;
     u32 has_emissive_map;
     f32vec3 emissive_factor;
+};
+
+DAXA_DECL_BUFFER(Material, {
+    MaterialInfo info;
 });
 
-DAXA_DECL_BUFFER_STRUCT(ObjectInfo, {
+struct ObjectInfo {
     f32mat4x4 model_matrix;
     f32mat4x4 normal_matrix;
+};
+
+DAXA_DECL_BUFFER(Object, {
+    ObjectInfo info;
 });
 
-DAXA_DECL_BUFFER_STRUCT(CameraInfo, {
+struct CameraInfo {
     f32mat4x4 projection_matrix;
     f32mat4x4 view_matrix;
     f32vec3 position;
+};
+
+/*DAXA_DECL_BUFFER_STRUCT(ObjectInfo, {
+    f32mat4x4 model_matrix;
+    f32mat4x4 normal_matrix;
+});*/
+
+DAXA_DECL_BUFFER(Camera, {
+    CameraInfo info;
 });
 
 struct DrawPush {
-    u64 camera_info_buffer;
-    u64 object_info_buffer;
-    u64 lights_info_buffer;
-    u64 face_buffer;
-    u64 material_info;
+    BufferRef(Camera) camera_info_buffer;
+    BufferRef(Object) object_info_buffer;
+    BufferRef(Lights) lights_info_buffer;
+    BufferRef(VertexBuffer) face_buffer;
+    BufferRef(Material) material_info;
     TextureId irradiance_map;
     TextureId brdfLUT;
     TextureId prefilter_map;
@@ -86,6 +111,6 @@ struct DrawPush {
 
 struct SkyboxDrawPush {
     f32mat4x4 mvp;
-    u64 face_buffer;
+    BufferRef(VertexBuffer) face_buffer;
     TextureId env_map;
 };

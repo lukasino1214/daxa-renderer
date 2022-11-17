@@ -6,6 +6,10 @@
 #include "../rendering/render_context.hpp"
 #include "../graphics/window.hpp"
 #include "../data/scene.hpp"
+#include "../graphics/camera.hpp"
+#include "../graphics/buffer.hpp"
+
+#include "ibl_renderer.hpp"
 
 namespace dare {
     struct RenderingSystem {
@@ -13,9 +17,15 @@ namespace dare {
         std::unique_ptr<Window>& window;
         daxa::ImGuiRenderer imgui_renderer;
 
+        std::unique_ptr<IBLRenderer> ibl_renderer;
+
+        daxa::RasterPipeline draw_pipeline;
+
+        daxa::ImageId depth_image = {};
+
         RenderingSystem(std::unique_ptr<Window>& window);
         ~RenderingSystem();
 
-        void draw(const std::shared_ptr<Scene>& scene);
+        void draw(const std::shared_ptr<Scene>& scene, ControlledCamera3D& camera, Buffer<CameraInfo>& camera_info_buffer, Buffer<LightsInfo>& lights_info_buffer);
     };
 }

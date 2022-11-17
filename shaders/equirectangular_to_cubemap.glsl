@@ -2,7 +2,7 @@
 #include <core.glsl>
 
 struct PushData {
-    u64 face_buffer;
+    BufferRef(VertexBuffer) face_buffer;
     TextureId hdr;
     f32mat4x4 mvp;
 };
@@ -13,7 +13,7 @@ DAXA_USE_PUSH_CONSTANT(PushData)
 layout(location = 0) out f32vec3 v_position;
 
 void main() {
-    DrawVertex vertex = read_buffer(DrawVertex, push_constant.face_buffer + gl_VertexIndex * (4 * 8));
+    DrawVertex vertex = push_constant.face_buffer.vertices[gl_VertexIndex];
     v_position = vertex.position.xyz;
     gl_Position =  push_constant.mvp * vec4(v_position, 1.0);
 }

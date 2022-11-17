@@ -5,6 +5,8 @@ using namespace daxa::types;
 
 #include "../utils/utils.hpp"
 
+#include <cstring>
+
 namespace dare {
     template<typename T>
     struct Buffer {
@@ -19,7 +21,7 @@ namespace dare {
                 .debug_name = debug_name,
             });
 
-            this->buffer_address = device.buffer_reference(buffer_id);
+            this->buffer_address = device.get_device_address(buffer_id);
         }
         ~Buffer() {
             device.destroy_buffer(buffer_id);
@@ -35,9 +37,8 @@ namespace dare {
                 .size = static_cast<u32>(sizeof(T)),
             });
 
-            auto staging_buffer_ptr = device.map_memory_as<u8>(staging_buffer);
+            auto staging_buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
             std::memcpy(staging_buffer_ptr, &data, sizeof(T));
-            device.unmap_memory(staging_buffer);
 
             cmd_list.pipeline_barrier({
                 .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
@@ -72,9 +73,8 @@ namespace dare {
 
             cmd_list.destroy_buffer_deferred(staging_buffer);
 
-            auto staging_buffer_ptr = device.map_memory_as<u8>(staging_buffer);
+            auto staging_buffer_ptr = device.get_host_address_as<u8>(staging_buffer);
             std::memcpy(staging_buffer_ptr, &data, sizeof(T));
-            device.unmap_memory(staging_buffer);
 
             cmd_list.pipeline_barrier({
                 .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,

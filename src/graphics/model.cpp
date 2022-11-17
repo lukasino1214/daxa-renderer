@@ -146,9 +146,8 @@ namespace dare {
                 .debug_name = APPNAME_PREFIX("cmd_list"),
             });
 
-            auto buffer_ptr = device.map_memory_as<MaterialInfo>(material_staging_buffer);
+            auto buffer_ptr = device.get_host_address_as<MaterialInfo>(material_staging_buffer);
             std::memcpy(buffer_ptr, &material_infos[i], sizeof(MaterialInfo));
-            device.unmap_memory(material_staging_buffer);
 
             cmd_list.pipeline_barrier({
                 .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
@@ -170,7 +169,7 @@ namespace dare {
             device.destroy_buffer(material_staging_buffer);
 
             material_buffers.push_back(material_info_buffer);
-            material_buffer_addresses.push_back(device.buffer_reference(material_info_buffer));
+            material_buffer_addresses.push_back(device.get_device_address(material_info_buffer));
         }
 
         for (auto & scene : model.scenes) {
@@ -289,9 +288,8 @@ namespace dare {
             });
             cmd_list.destroy_buffer_deferred(vertex_staging_buffer);
 
-            auto buffer_ptr = device.map_memory_as<DrawVertex>(vertex_staging_buffer);
+            auto buffer_ptr = device.get_host_address_as<DrawVertex>(vertex_staging_buffer);
             std::memcpy(buffer_ptr, vertices.data(), vertices.size() * sizeof(DrawVertex));
-            device.unmap_memory(vertex_staging_buffer);
 
             cmd_list.pipeline_barrier({
                 .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
@@ -326,9 +324,8 @@ namespace dare {
             });
             cmd_list.destroy_buffer_deferred(index_staging_buffer);
 
-            auto buffer_ptr = device.map_memory_as<u32>(index_staging_buffer);
+            auto buffer_ptr = device.get_host_address_as<u32>(index_staging_buffer);
             std::memcpy(buffer_ptr, indices.data(), indices.size() * sizeof(u32));
-            device.unmap_memory(index_staging_buffer);
 
             cmd_list.pipeline_barrier({
                 .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
@@ -352,7 +349,7 @@ namespace dare {
         }
 
         std::cout << path << " loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() << " ms!" << std::endl;
-        vertex_buffer_address = device.buffer_reference(vertex_buffer);
+        vertex_buffer_address = device.get_device_address(vertex_buffer);
     }
 
     Model::~Model() {
