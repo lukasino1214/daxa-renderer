@@ -42,7 +42,7 @@ void main() {
         for (float theta = 0.0; theta < HALF_PI; theta += push_constant.delta_theta) {
             vec3 tempVec = cos(phi) * right + sin(phi) * up;
             vec3 sampleVector = cos(theta) * N + sin(theta) * tempVec;
-            color += get_cube_map(push_constant.env_map, sampleVector).rgb * cos(theta) * sin(theta);
+            color += sample_cube_map(push_constant.env_map, sampleVector).rgb * cos(theta) * sin(theta);
             sampleCount++;
         }
     }

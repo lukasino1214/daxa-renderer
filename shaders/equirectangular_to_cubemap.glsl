@@ -33,7 +33,7 @@ vec2 SampleSphericalMap(vec3 v) {
 
 void main() {
     vec2 uv = SampleSphericalMap(normalize(v_position));
-    out_color = vec4(get_texture(push_constant.hdr, uv).rgb, 1.0);
+    out_color = vec4(sample_texture(push_constant.hdr, uv).rgb, 1.0);
 }
 
 #endif

@@ -35,7 +35,7 @@ layout(location = 0) out f32vec4 out_color;
 const f32 PI = 3.14159265359;
 
 vec3 getNormalFromMap(TextureId normal_map) {
-    vec3 tangentNormal = get_texture(normal_map, v_uv).xyz * 2.0 - 1.0;
+    vec3 tangentNormal = sample_texture(normal_map, v_uv).xyz * 2.0 - 1.0;
 
     vec3 Q1  = dFdx(v_position);
     vec3 Q2  = dFdy(v_position);
@@ -100,12 +100,12 @@ void main() {
     LightsInfo lights = push_constant.lights_info_buffer.info;
     MaterialInfo material_info = push_constant.material_info.info;
 
-    f32vec3 albedo = get_texture(material_info.albedo, v_uv).rgb;
-    f32vec3 emissive = get_texture(material_info.emissive_map, v_uv).rgb;
-    f32vec2 metallic_roughness = get_texture(material_info.metallic_roughness, v_uv).gb;
+    f32vec3 albedo = sample_texture(material_info.albedo, v_uv).rgb;
+    f32vec3 emissive = sample_texture(material_info.emissive_map, v_uv).rgb;
+    f32vec2 metallic_roughness = sample_texture(material_info.metallic_roughness, v_uv).gb;
     f32 metallic  = metallic_roughness.y;
     f32 roughness = metallic_roughness.x;
-    f32 ao = get_texture(material_info.occlusion_map, v_uv).r;
+    f32 ao = sample_texture(material_info.occlusion_map, v_uv).r;
 
     vec3 N = getNormalFromMap(material_info.normal_map);
     vec3 V = normalize(v_camera_position - v_position);
@@ -145,12 +145,12 @@ void main() {
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
 
-    vec3 irradiance = get_cube_map(push_constant.irradiance_map, N).rgb;
+    vec3 irradiance = sample_cube_map(push_constant.irradiance_map, N).rgb;
     vec3 diffuse = irradiance * albedo;
 
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefilteredColor = get_cube_map_lod(push_constant.prefilter_map, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf  = get_texture(push_constant.brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec2 brdf  = sample_texture(push_constant.brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
     vec3 ambient = (kD * diffuse + specular) * ao;

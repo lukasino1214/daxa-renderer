@@ -22,7 +22,7 @@ layout(location = 0) in f32vec3 v_position;
 layout(location = 0) out f32vec4 out_color;
 
 void main() {
-    out_color = vec4(get_cube_map(push_constant.env_map, v_position).rgb, 1.0);
+    out_color = vec4(sample_cube_map(push_constant.env_map, v_position).rgb, 1.0);
 }
 
 #endif
