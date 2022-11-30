@@ -104,9 +104,9 @@ struct DrawPush {
     BufferRef(Lights) lights_info_buffer;
     BufferRef(VertexBuffer) face_buffer;
     BufferRef(Material) material_info;
-    TextureId irradiance_map;
+    /*TextureId irradiance_map;
     TextureId brdfLUT;
-    TextureId prefilter_map;
+    TextureId prefilter_map;*/
 };
 
 struct SkyboxDrawPush {

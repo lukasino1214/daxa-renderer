@@ -124,8 +124,9 @@ namespace dare {
             }
 
             scene_hiearchy->draw();
+            viewport_panel->draw(rendering_system->get_render_image());
 
-            viewport_panel->draw(rendering_system->color_image);
+            rendering_system->task->render_settings_ui();
 
             ImGui::Render();
         }
@@ -136,6 +137,7 @@ namespace dare {
             last_frame = current_frame;
 
             ui_update();
+            this->rendering_system->task->rebuild_pipeline();
 
             scene->update();
 

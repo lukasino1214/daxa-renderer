@@ -29,6 +29,7 @@ add_executable(${PROJECT_NAME}
     "src/graphics/camera.hpp"
     "src/graphics/camera.cpp"
     "src/graphics/buffer.hpp"
+    "src/rendering/render_context.hpp"
     "src/systems/ibl_renderer.hpp"
     "src/systems/ibl_renderer.cpp"
     "src/systems/rendering_system.hpp"
@@ -48,6 +49,10 @@ add_executable(${PROJECT_NAME}
     "src/panels/scene_hiearchy.cpp"
     "src/panels/viewport_panel.hpp"    
     "src/panels/viewport_panel.cpp"
+    "src/rendering/task.hpp"
+    "src/rendering/task.cpp"
+    "src/rendering/basic_forward.hpp"
+    "src/rendering/basic_forward.cpp"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT yaml-cpp)

@@ -96,70 +96,104 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+f32vec3 calculate_point_light(PointLight light, f32vec3 frag_color, f32vec3 normal, f32vec3 frag_position, f32vec3 camera_position) {
+    #if defined(SETTINGS_SHADING_MODEL_LAMBERTIAN)
+    f32vec3 light_dir = normalize(light.position - frag_position);
+    f32 distance = length(light.position.xyz - frag_position);
+    f32 attenuation = 1.0f / (distance * distance);
+    f32vec3 diffuse = frag_color * light.color * max(dot(normal, light_dir), 0.0) * attenuation * light.intensity;
+    return diffuse;
+    #endif
+    #if defined(SETTINGS_SHADING_MODEL_PHONG)
+    f32vec3 light_dir = normalize(light.position - frag_position);
+    f32vec3 view_dir = normalize(camera_position - frag_position);
+    f32 distance = length(light.position.xyz - frag_position);
+    f32 attenuation = 1.0f / (distance * distance);
+    f32 diffuse = max(dot(normal, light_dir), 0.0);
+    f32 specular = max(dot(view_dir, reflect(-light_dir, normal)), 0.0);
+    return frag_color * light.color * (diffuse + specular) * attenuation * light.intensity;
+    #endif
+    #if defined(SETTINGS_SHADING_MODEL_BLINN_PHONG)
+    f32vec3 light_dir = normalize(light.position - frag_position);
+    f32vec3 view_dir = normalize(camera_position - frag_position);
+    f32vec3 halfway_dir = normalize(light_dir + view_dir);
+    f32 distance = length(light.position.xyz - frag_position);
+    f32 attenuation = 1.0f / (distance * distance);
+    f32 diffuse = max(dot(normal, light_dir), 0.0);
+    f32 specular = max(dot(view_dir, halfway_dir), 0.0);
+    return frag_color * light.color * (diffuse + specular) * attenuation * light.intensity;
+    #endif
+    #if defined(SETTINGS_SHADING_MODEL_GAUSSIAN)
+    f32vec3 light_dir = normalize(light.position - frag_position);
+    f32vec3 view_dir = normalize(camera_position - frag_position);
+    f32vec3 halfway_dir = normalize(light_dir + view_dir);
+    f32 distance = length(light.position.xyz - frag_position);
+    f32 attenuation = 1.0f / (distance * distance);
+    f32 diffuse = max(dot(normal, light_dir), 0.0);
+    f32 normal_half = acos(dot(halfway_dir, normal));
+    f32 exponent = normal_half / 1.0;
+    exponent = -(exponent * exponent);
+    return frag_color * light.color * (diffuse + exp(exponent)) * attenuation * light.intensity;
+    #endif
+    return f32vec3(1.0);
+}
+
 void main() {
-    LightsInfo lights = push_constant.lights_info_buffer.info;
+    #if defined(SETTINGS_TEXTURING_NONE)
+    f32vec3 color = f32vec3(1.0, 1.0, 1.0);
+    #elif defined(SETTINGS_TEXTURING_VERTEX_COLOR)
+    f32vec3 color = f32vec3(0.5, 0.5, 0.5);
+    #elif defined(SETTINGS_TEXTURING_ALBEDO)
     MaterialInfo material_info = push_constant.material_info.info;
+    f32vec3 color = sample_texture(material_info.albedo, v_uv).rgb;
+    #else
+    f32vec3 color = f32vec3(0.0, 0.0, 0.0);
+    #endif
 
-    f32vec3 albedo = sample_texture(material_info.albedo, v_uv).rgb;
-    f32vec3 emissive = sample_texture(material_info.emissive_map, v_uv).rgb;
-    f32vec2 metallic_roughness = sample_texture(material_info.metallic_roughness, v_uv).gb;
-    f32 metallic  = metallic_roughness.y;
-    f32 roughness = metallic_roughness.x;
-    f32 ao = sample_texture(material_info.occlusion_map, v_uv).r;
+    #if defined(SETTINGS_SHADING_MODEL_NONE)
 
-    vec3 N = getNormalFromMap(material_info.normal_map);
-    vec3 V = normalize(v_camera_position - v_position);
-    vec3 R = reflect(-V, N);
+    #elif defined(SETTINGS_SHADING_MODEL_LAMBERTIAN)
+    f32vec3 normal = normalize(v_normal);
+    LightsInfo lights = push_constant.lights_info_buffer.info;
+    //for(uint i = 0; i < lights.num_dir_lights; i++) {}
+    for(uint i = 0; i < lights.num_point_lights; i++) {
+        color += calculate_point_light(lights.point_lights[i], color, normal, v_position, v_camera_position);
+    }
+    //color = f32vec3(1.0, 0.0, 0.0);
+    //for(uint i = 0; i < lights.num_spot_lights; i++) {}
 
-    vec3 F0 = vec3(0.04);
-    F0 = mix(F0, albedo, metallic);
 
-    vec3 Lo = vec3(0.0);
-    for (int i = 0; i < lights.num_point_lights; ++i) {
-        vec3 L = normalize(lights.point_lights[i].position.xyz - v_position);
-        vec3 H = normalize(V + L);
-        float distance = length(lights.point_lights[i].position.xyz - v_position);
-        float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = lights.point_lights[i].color.rgb * attenuation * lights.point_lights[i].intensity;
-
-        float NDF = DistributionGGX(N, H, roughness);
-        float G   = GeometrySmith(N, V, L, roughness);
-        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-
-        vec3 numerator    = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-        vec3 specular = numerator / denominator;
-
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metallic;
-
-        float NdotL = max(dot(N, L), 0.0);
-
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    /*f32vec3 normal = normalize(v_normal);
+    f32vec3 light_dir = normalize(f32vec3(0.0, 260.0, 0.0) - v_position);
+    float diffuse = max(dot(normal, light_dir), 0.0);
+    color = diffuse * color;*/
+    #elif defined(SETTINGS_SHADING_MODEL_PHONG)
+    f32vec3 normal = normalize(v_normal);
+    LightsInfo lights = push_constant.lights_info_buffer.info;
+    //for(uint i = 0; i < lights.num_dir_lights; i++) {}
+    for(uint i = 0; i < lights.num_point_lights; i++) {
+        color += calculate_point_light(lights.point_lights[i], color, normal, v_position, v_camera_position);
     }
 
-    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-
-    vec3 kS = F;
-    vec3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;
-
-    vec3 irradiance = sample_cube_map(push_constant.irradiance_map, N).rgb;
-    vec3 diffuse = irradiance * albedo;
-
-    const float MAX_REFLECTION_LOD = 4.0;
-    vec3 prefilteredColor = get_cube_map_lod(push_constant.prefilter_map, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf  = sample_texture(push_constant.brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
-
-    vec3 ambient = (kD * diffuse + specular) * ao;
-
-    vec3 color = ambient + Lo;
-
-    if(material_info.has_emissive_map == 1) {
-        color += emissive;
+    #elif defined(SETTINGS_SHADING_MODEL_BLINN_PHONG)
+    f32vec3 normal = normalize(v_normal);
+    LightsInfo lights = push_constant.lights_info_buffer.info;
+    //for(uint i = 0; i < lights.num_dir_lights; i++) {}
+    for(uint i = 0; i < lights.num_point_lights; i++) {
+        color += calculate_point_light(lights.point_lights[i], color, normal, v_position, v_camera_position);
     }
+
+    #elif defined(SETTINGS_SHADING_MODEL_GAUSSIAN)
+    f32vec3 normal = normalize(v_normal);
+    LightsInfo lights = push_constant.lights_info_buffer.info;
+    //for(uint i = 0; i < lights.num_dir_lights; i++) {}
+    for(uint i = 0; i < lights.num_point_lights; i++) {
+        color += calculate_point_light(lights.point_lights[i], color, normal, v_position, v_camera_position);
+    }
+
+    #else
+    color = f32vec3(0.0, 0.0, 0.0);
+    #endif
 
     out_color = vec4(color, 1.0);
 }

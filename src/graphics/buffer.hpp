@@ -12,7 +12,7 @@ namespace dare {
     struct Buffer {
         daxa::Device& device;
         daxa::BufferId buffer_id;
-        u64 buffer_address;
+        daxa::BufferDeviceAddress buffer_address;
 
         Buffer(daxa::Device& device, const std::string& debug_name = "created buffer type of " + std::string{type_name<T>()}, daxa::MemoryFlags memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY) : device{device} {
             this->buffer_id = device.create_buffer({

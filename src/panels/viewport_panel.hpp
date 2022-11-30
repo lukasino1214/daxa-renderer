@@ -12,8 +12,8 @@ namespace dare {
         ~ViewportPanel() = default;
 
         void draw(daxa::ImageId image);
-        glm::vec2 get_size();
-        bool should_resize();
+        auto get_size() -> glm::vec2;
+        auto should_resize() -> bool;
 
         bool resized = true;
         glm::vec2 size{ 400.0f, 300.0f };

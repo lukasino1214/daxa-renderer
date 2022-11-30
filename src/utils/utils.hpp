@@ -46,3 +46,5 @@ constexpr auto type_name() -> std::string_view {
     constexpr auto& value = type_name_holder<T>::value;
     return std::string_view{value.data(), value.size()};
 }
+
+auto file_to_string(const std::string& file_path) -> std::string;
