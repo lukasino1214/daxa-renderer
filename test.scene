@@ -7,7 +7,7 @@ Entities:
       Translation: [0, -1, -20]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
-    LightComponent:
+    PointLightComponent:
       Color: [0, 1, 0]
       Intensity: 64
   - Entity: 5631516052165324533
@@ -17,7 +17,7 @@ Entities:
       Translation: [0, -1, 20]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
-    LightComponent:
+    PointLightComponent:
       Color: [0, 0, 1]
       Intensity: 64
   - Entity: 12073773896524178903
@@ -27,7 +27,7 @@ Entities:
       Translation: [0, -1, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
-    LightComponent:
+    PointLightComponent:
       Color: [1, 0, 0]
       Intensity: 64
   - Entity: 14259701726645426398

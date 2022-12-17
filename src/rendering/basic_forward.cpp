@@ -85,9 +85,9 @@ namespace dare {
                 auto& model = entity.get_component<ModelComponent>().model;
 
                 DrawPush push_constant;
-                push_constant.camera_info_buffer = camera_buffer;
-                push_constant.object_info_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
-                push_constant.lights_info_buffer = scene->lights_buffer->buffer_address;
+                push_constant.camera_buffer = camera_buffer;
+                push_constant.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
+                push_constant.lights_buffer = scene->lights_buffer->buffer_address;
 
                 model->bind_index_buffer(cmd_list);
                 model->draw(cmd_list, push_constant);
@@ -161,7 +161,6 @@ namespace dare {
                 this->settings.shading_model.lambertian = false;
                 this->settings.shading_model.phong = false;
                 this->settings.shading_model.blinn_phong = false;
-                this->settings.shading_model.gourad = false;
                 this->settings.shading_model.gaussian = false;
 
                 this->has_rebuild_pipeline = true;
@@ -171,7 +170,6 @@ namespace dare {
                 this->settings.shading_model.none = false;
                 this->settings.shading_model.phong = false;
                 this->settings.shading_model.blinn_phong = false;
-                this->settings.shading_model.gourad = false;
                 this->settings.shading_model.gaussian = false;
 
                 this->has_rebuild_pipeline = true;
@@ -181,7 +179,6 @@ namespace dare {
                 this->settings.shading_model.none = false;
                 this->settings.shading_model.lambertian = false;
                 this->settings.shading_model.blinn_phong = false;
-                this->settings.shading_model.gourad = false;
                 this->settings.shading_model.gaussian = false;
 
                 this->has_rebuild_pipeline = true;
@@ -191,17 +188,6 @@ namespace dare {
                 this->settings.shading_model.none = false;
                 this->settings.shading_model.lambertian = false;
                 this->settings.shading_model.phong = false;
-                this->settings.shading_model.gourad = false;
-                this->settings.shading_model.gaussian = false;
-
-                this->has_rebuild_pipeline = true;
-            }
-
-            if(ImGui::Checkbox("Gourad", &this->settings.shading_model.gourad)) {
-                this->settings.shading_model.none = false;
-                this->settings.shading_model.lambertian = false;
-                this->settings.shading_model.phong = false;
-                this->settings.shading_model.blinn_phong = false;
                 this->settings.shading_model.gaussian = false;
 
                 this->has_rebuild_pipeline = true;
@@ -212,8 +198,36 @@ namespace dare {
                 this->settings.shading_model.lambertian = false;
                 this->settings.shading_model.phong = false;
                 this->settings.shading_model.blinn_phong = false;
-                this->settings.shading_model.gourad = false;
 
+                this->has_rebuild_pipeline = true;
+            }
+
+            ImGui::TreePop();
+        }
+
+        if(ImGui::TreeNodeEx("Normal mapping")) {
+            if(ImGui::Checkbox("None", &this->settings.normal_mappings.none)) {
+                this->settings.normal_mappings.using_tangents = false;
+                this->settings.normal_mappings.calculating_TBN_vectors = false;
+
+                this->has_rebuild_pipeline = true;
+            }
+
+            if(ImGui::Checkbox("Using Tangents", &this->settings.normal_mappings.using_tangents)) {
+                this->settings.normal_mappings.none = false;
+                this->settings.normal_mappings.calculating_TBN_vectors = false;
+
+                this->has_rebuild_pipeline = true;
+            }
+
+            if(ImGui::Checkbox("Calculating Tangents", &this->settings.normal_mappings.calculating_TBN_vectors)) {
+                this->settings.normal_mappings.none = false;
+                this->settings.normal_mappings.using_tangents = false;
+
+                this->has_rebuild_pipeline = true;
+            }
+
+            if(ImGui::Checkbox("Re-orthogonalize TBN", &this->settings.normal_mappings.reorthogonalize_TBN_vectors)) {
                 this->has_rebuild_pipeline = true;
             }
 
@@ -255,28 +269,39 @@ namespace dare {
             string += "#define SETTINGS_SHADING_MODEL_BLINN_PHONG\n";
         }
 
-        if(this->settings.shading_model.gourad) {
-            string += "#define SETTINGS_SHADING_MODEL_GOURAD\n";
-        }
-
         if(this->settings.shading_model.gaussian) {
             string += "#define SETTINGS_SHADING_MODEL_GAUSSIAN\n";
         }
 
-        std::cout << string << std::endl;
+        if(this->settings.normal_mappings.none) {
+            string += "#define SETTINGS_NORMAL_MAPPING_NONE\n";
+        }
+
+        if(this->settings.normal_mappings.using_tangents) {
+            string += "#define SETTINGS_NORMAL_MAPPING_USING_TANGENTS\n";
+        }
+
+        if(this->settings.normal_mappings.calculating_TBN_vectors) {
+            string += "#define SETTINGS_NORMAL_MAPPING_CALCULATING_TBN_VECTORS\n";
+        }
+
+        if(this->settings.normal_mappings.reorthogonalize_TBN_vectors) {
+            string += "#define SETTINGS_NORMAL_MAPPING_REORTHOGONALIZE_TBN_VECTORS\n";
+        }
 
         return std::move(string);
     }
 
     void BasicForward::rebuild_pipeline() {
         if(this->has_rebuild_pipeline) {
+            std::string shader_code = this->settings_to_string() + file_to_string("./shaders/basic_forward/draw.glsl");
             this->draw_pipeline = this->context.pipeline_compiler.create_raster_pipeline({
                 .vertex_shader_info = {
-                    .source = daxa::ShaderCode{ this->settings_to_string() + file_to_string("./shaders/draw.glsl") }, 
+                    .source = daxa::ShaderCode{ shader_code }, 
                     .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_VERT"} } }
                 },
                 .fragment_shader_info = {
-                    .source = daxa::ShaderCode{ this->settings_to_string() + file_to_string("./shaders/draw.glsl") }, 
+                    .source = daxa::ShaderCode{ shader_code }, 
                     .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_FRAG"} } }
                 },
                 .color_attachments = {{.format = this->context.swapchain.get_format(), .blend = {.blend_enable = true, .src_color_blend_factor = daxa::BlendFactor::SRC_ALPHA, .dst_color_blend_factor = daxa::BlendFactor::ONE_MINUS_SRC_ALPHA}}},

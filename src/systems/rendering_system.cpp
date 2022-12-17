@@ -5,11 +5,13 @@
 
 #include "../rendering/task.hpp"
 #include "../rendering/basic_forward.hpp"
+#include "../rendering/basic_deffered.hpp"
+
 namespace dare {
     RenderingSystem::RenderingSystem(std::unique_ptr<Window>& window) : window{window} {
         // setup context
         this->context.context = daxa::create_context({
-            .enable_validation = false,
+            .enable_validation = true,
         });
 
         this->context.device = this->context.context.create_device({
@@ -121,6 +123,22 @@ namespace dare {
         this->context.swapchain.resize();
         this->size = { static_cast<f32>(sx), static_cast<f32>(sy) };
         this->task->resize(sx, sy);
+    }
+
+    void RenderingSystem::render_settings_ui() {
+        ImGui::Begin("Rendering Technique");
+        if(ImGui::Checkbox("Forward Rendering", &this->rendering_techniques.forward_rendering)){
+            this->rendering_techniques.deffered_rendering = false;
+            this->task = std::make_unique<BasicForward>(context);
+        }
+
+        if(ImGui::Checkbox("Deffered Rendering", &this->rendering_techniques.deffered_rendering)){
+            this->rendering_techniques.forward_rendering = false;
+            this->task = std::make_unique<BasicDeffered>(context);
+        }
+        ImGui::End();
+
+        task->render_settings_ui();
     }
 
     auto RenderingSystem::get_render_image() -> daxa::ImageId {

@@ -16,6 +16,7 @@ namespace dare {
         Entity entity = {registry.create(), this};
         entity.add_component<IDComponent>(uuid);
         entity.add_component<TransformComponent>();
+        entity.get_component<TransformComponent>().object_info = std::make_shared<Buffer<ObjectInfo>>(device);
         //entity.add_component<RelationshipComponent>();
         auto &tag = entity.add_component<TagComponent>();
         tag.tag = name.empty() ? "Entity" : name;
@@ -42,17 +43,45 @@ namespace dare {
         });
 
         LightsInfo info;
+        info.num_directional_lights = 0;
         info.num_point_lights = 0;
+        info.num_spot_lights = 0;
 
         iterate([&](Entity entity) {
-            if(entity.has_component<LightComponent>()) {
-                auto& comp = entity.get_component<LightComponent>();
+            if(entity.has_component<DirectionalLightComponent>()) {
+                auto& comp = entity.get_component<DirectionalLightComponent>();
+                glm::vec3 dir = comp.direction;
+                glm::vec3 col = comp.color;
+                info.directional_lights[info.num_directional_lights].direction = *reinterpret_cast<const f32vec3 *>(&dir);
+                info.directional_lights[info.num_directional_lights].color = *reinterpret_cast<const f32vec3 *>(&col);
+                info.directional_lights[info.num_directional_lights].intensity = comp.intensity;
+                info.num_directional_lights++;
+                return;
+            }
+
+            if(entity.has_component<PointLightComponent>()) {
+                auto& comp = entity.get_component<PointLightComponent>();
                 glm::vec3 pos = entity.get_component<TransformComponent>().translation;
                 glm::vec3 col = comp.color;
                 info.point_lights[info.num_point_lights].position = *reinterpret_cast<const f32vec3 *>(&pos);
                 info.point_lights[info.num_point_lights].color = *reinterpret_cast<const f32vec3 *>(&col);
                 info.point_lights[info.num_point_lights].intensity = comp.intensity;
                 info.num_point_lights++;
+                return;
+            }
+
+            if(entity.has_component<SpotLightComponent>()) {
+                auto& comp = entity.get_component<SpotLightComponent>();
+                glm::vec3 pos = entity.get_component<TransformComponent>().translation;
+                glm::vec3 dir = comp.direction;
+                glm::vec3 col = comp.color;
+                info.spot_lights[info.num_spot_lights].position = *reinterpret_cast<const f32vec3 *>(&pos);
+                info.spot_lights[info.num_spot_lights].direction = *reinterpret_cast<const f32vec3 *>(&dir);
+                info.spot_lights[info.num_spot_lights].color = *reinterpret_cast<const f32vec3 *>(&col);
+                info.spot_lights[info.num_spot_lights].intensity = comp.intensity;
+                info.spot_lights[info.num_spot_lights].cut_off = glm::cos(glm::radians(comp.cut_off));
+                info.spot_lights[info.num_spot_lights].outer_cut_off = glm::cos(glm::radians(comp.outer_cut_off));
+                info.num_spot_lights++;
                 return;
             }
 

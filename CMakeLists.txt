@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_TOOLCHAIN_FILE "/home/lukas/vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(CMAKE_TOOLCHAIN_FILE "/home/lukas/dev/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E create_symlink
@@ -53,6 +53,8 @@ add_executable(${PROJECT_NAME}
     "src/rendering/task.cpp"
     "src/rendering/basic_forward.hpp"
     "src/rendering/basic_forward.cpp"
+    "src/rendering/basic_deffered.hpp"
+    "src/rendering/basic_deffered.cpp"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT yaml-cpp)

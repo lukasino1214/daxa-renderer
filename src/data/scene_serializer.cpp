@@ -99,12 +99,36 @@ namespace dare {
             out << YAML::EndMap;
         }
 
-        if(entity.has_component<LightComponent>()) {
-            out << YAML::Key << "LightComponent";
+        if(entity.has_component<DirectionalLightComponent>()) {
+            out << YAML::Key << "DirectionalLightComponent";
             out << YAML::BeginMap;
 
-            out << YAML::Key << "Color" << YAML::Value << entity.get_component<LightComponent>().color;
-            out << YAML::Key << "Intensity" << YAML::Value << entity.get_component<LightComponent>().intensity;
+            out << YAML::Key << "Direction" << YAML::Value << entity.get_component<DirectionalLightComponent>().direction;
+            out << YAML::Key << "Color" << YAML::Value << entity.get_component<DirectionalLightComponent>().color;
+            out << YAML::Key << "Intensity" << YAML::Value << entity.get_component<DirectionalLightComponent>().intensity;
+
+            out << YAML::EndMap;
+        }
+
+        if(entity.has_component<PointLightComponent>()) {
+            out << YAML::Key << "PointLightComponent";
+            out << YAML::BeginMap;
+
+            out << YAML::Key << "Color" << YAML::Value << entity.get_component<PointLightComponent>().color;
+            out << YAML::Key << "Intensity" << YAML::Value << entity.get_component<PointLightComponent>().intensity;
+
+            out << YAML::EndMap;
+        }
+
+        if(entity.has_component<SpotLightComponent>()) {
+            out << YAML::Key << "SpotLightComponent";
+            out << YAML::BeginMap;
+
+            out << YAML::Key << "Direction" << YAML::Value << entity.get_component<SpotLightComponent>().direction;
+            out << YAML::Key << "Color" << YAML::Value << entity.get_component<SpotLightComponent>().color;
+            out << YAML::Key << "Intensity" << YAML::Value << entity.get_component<SpotLightComponent>().intensity;
+            out << YAML::Key << "CutOff" << YAML::Value << entity.get_component<SpotLightComponent>().cut_off;
+            out << YAML::Key << "OuterCutOff" << YAML::Value << entity.get_component<SpotLightComponent>().outer_cut_off;
 
             out << YAML::EndMap;
         }
@@ -162,7 +186,6 @@ namespace dare {
                     comp.translation = transform_component["Translation"].as<glm::vec3>();
                     comp.rotation = transform_component["Rotation"].as<glm::vec3>();
                     comp.scale = transform_component["Scale"].as<glm::vec3>();
-                    comp.object_info = std::make_shared<Buffer<ObjectInfo>>(device);
                 }
 
                 auto model_component = entity["ModelComponent"];
@@ -171,11 +194,29 @@ namespace dare {
                     deserialized_entity.add_component<ModelComponent>(model);
                 }
 
-                auto light_component = entity["LightComponent"];
-                if(light_component) {
-                    auto& light = deserialized_entity.add_component<LightComponent>();
-                    light.color = light_component["Color"].as<glm::vec3>();
-                    light.intensity = light_component["Intensity"].as<f32>();
+                auto directional_light_component = entity["DirectionalLightComponent"];
+                if(directional_light_component) {
+                    auto& light = deserialized_entity.add_component<DirectionalLightComponent>();
+                    light.direction = directional_light_component["Direction"].as<glm::vec3>();
+                    light.color = directional_light_component["Color"].as<glm::vec3>();
+                    light.intensity = directional_light_component["Intensity"].as<f32>();
+                }
+
+                auto point_light_component = entity["PointLightComponent"];
+                if(point_light_component) {
+                    auto& light = deserialized_entity.add_component<PointLightComponent>();
+                    light.color = point_light_component["Color"].as<glm::vec3>();
+                    light.intensity = point_light_component["Intensity"].as<f32>();
+                }
+
+                auto spot_light_component = entity["SpotLightComponent"];
+                if(spot_light_component) {
+                    auto& light = deserialized_entity.add_component<SpotLightComponent>();
+                    light.direction = spot_light_component["Direction"].as<glm::vec3>();
+                    light.color = spot_light_component["Color"].as<glm::vec3>();
+                    light.intensity = spot_light_component["Intensity"].as<f32>();
+                    light.cut_off = spot_light_component["CutOff"].as<f32>();
+                    light.outer_cut_off = spot_light_component["OuterCutOff"].as<f32>();
                 }
             }
         }

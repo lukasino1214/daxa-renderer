@@ -3,7 +3,7 @@
 #include "task.hpp"
 
 namespace dare {
-    struct BasicForward: public Task {
+    struct BasicDeffered : public Task {
         struct Settings {
             struct Texturing {
                 bool none = true;
@@ -25,10 +25,17 @@ namespace dare {
                 bool calculating_TBN_vectors = false;
                 bool reorthogonalize_TBN_vectors  = false;
             } normal_mappings;
+
+            struct VisualizeAttachments {
+                bool none = true;
+                bool albedo = false;
+                bool normal = false;
+                bool position  = false;
+            } visualize_attachments;
         } settings;
 
-        BasicForward(RenderContext& context);
-        virtual ~BasicForward() override;
+        BasicDeffered(RenderContext& context);
+        virtual ~BasicDeffered() override;
 
         virtual void render(daxa::CommandList& cmd_list, const std::shared_ptr<Scene>& scene, daxa::BufferDeviceAddress camera_buffer) override;
         virtual void resize(u32 sx, u32 sy) override;
@@ -41,9 +48,15 @@ namespace dare {
         virtual auto get_depth_image() -> daxa::ImageId override { return this->depth_image; }
 
         daxa::ImageId color_image;
+        daxa::ImageId albedo_image;
+        daxa::ImageId normal_image;
+        daxa::ImageId position_image;
         daxa::ImageId depth_image;
 
-        daxa::RasterPipeline draw_pipeline;
-        bool has_rebuild_pipeline = true;
+        daxa::SamplerId sampler;
+
+        daxa::RasterPipeline g_buffer_gather_pipeline;
+        daxa::RasterPipeline composition_pipeline;
+        bool has_rebuild_pipeline = true;        
     };
 }

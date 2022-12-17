@@ -185,6 +185,7 @@ namespace dare {
                     const float* positionBuffer = nullptr;
                     const float* normalBuffer = nullptr;
                     const float* texCoordsBuffer = nullptr;
+                    const float* tangentsBuffer = nullptr;
 
                     if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
                         const tinygltf::Accessor& accessor = model.accessors[primitive.attributes.find("POSITION")->second];
@@ -205,14 +206,23 @@ namespace dare {
                         texCoordsBuffer = reinterpret_cast<const float*>(&(model.buffers[view.buffer].data[accessor.byteOffset + view.byteOffset]));
                     }
 
+                    if (primitive.attributes.find("TANGENT") != primitive.attributes.end()) {
+                        const tinygltf::Accessor& accessor = model.accessors[primitive.attributes.find("TANGENT")->second];
+                        const tinygltf::BufferView& view = model.bufferViews[accessor.bufferView];
+                        tangentsBuffer = reinterpret_cast<const float*>(&(model.buffers[view.buffer].data[accessor.byteOffset + view.byteOffset]));
+                    }
+
                     for (size_t v = 0; v < vertexCount; v++) {
                         glm::vec3 temp_position = glm::make_vec3(&positionBuffer[v * 3]);
                         glm::vec3 temp_normal = glm::make_vec3(&normalBuffer[v * 3]);
                         glm::vec2 temp_uv = texCoordsBuffer ? glm::make_vec2(&texCoordsBuffer[v * 2]) : glm::vec2(0.0f);
+                        glm::vec4 temp_tangent = tangentsBuffer ? glm::make_vec4(&tangentsBuffer[v * 4]) : glm::vec4(0.0);
                         DrawVertex vertex{
                             .position = {temp_position.x, temp_position.y, temp_position.z},
                             .normal = {temp_normal.x, temp_normal.y, temp_normal.z},
-                            .uv = {temp_uv.x, temp_uv.y}};
+                            .uv = {temp_uv.x, temp_uv.y},
+                            .tangent = {temp_tangent.x, temp_tangent.y, temp_tangent.z, temp_tangent.w}
+                        };
 
                         vertices.push_back(vertex);
                     }
@@ -388,7 +398,7 @@ namespace dare {
     void Model::draw(daxa::CommandList & cmd_list, DrawPush& push_constant) {
         for (auto & primitive : primitives) {
             push_constant.face_buffer = vertex_buffer_address;
-            push_constant.material_info = material_buffer_addresses[primitive.material_index];
+            push_constant.material_info_buffer = material_buffer_addresses[primitive.material_index];
             cmd_list.push_constant(push_constant);
 
             if (primitive.index_count > 0) {

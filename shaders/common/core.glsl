@@ -1,3 +1,5 @@
+#pragma once
+
 #include <shared.inl>
 
 #define sample_texture(texture_id, uv) texture(sampler2D(daxa_get_texture(texture2D, texture_id.image_view_id), daxa_get_sampler(texture_id.sampler_id)), uv)

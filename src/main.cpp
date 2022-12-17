@@ -126,7 +126,7 @@ namespace dare {
             scene_hiearchy->draw();
             viewport_panel->draw(rendering_system->get_render_image());
 
-            rendering_system->task->render_settings_ui();
+            rendering_system->render_settings_ui();
 
             ImGui::Render();
         }

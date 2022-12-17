@@ -1,52 +1,36 @@
 #pragma once
 
-#define DAXA_SHADER_NO_NAMESPACE
+//#include "lighting.glsl"
+
+#define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
 #include <daxa/daxa.inl>
 
 #define APPNAME "Daxa Renderer"
 #define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
 
+#include "common/lighting.glsl"
+
 struct DrawVertex {
     f32vec3 position;
     f32vec3 normal;
     f32vec2 uv;
+    f32vec4 tangent;
 };
 
-DAXA_DECL_BUFFER(VertexBuffer, {
-    DrawVertex vertices[];
-});
-
-struct DirectionalLight {
-    f32vec3 direction;
-    f32vec3 color;
-    f32 intensity;
-};
-
-struct PointLight {
-    f32vec3 position;
-    f32vec3 color;
-    f32 intensity;
-};
-
-struct SpotLight {
-    f32vec3 position;
-    f32vec3 direction;
-    f32vec3 color;
-    f32 intensity;
-    f32 cutOff;
-    f32 outerCutOff;     
-};
+DAXA_ENABLE_BUFFER_PTR(DrawVertex)
 
 #define MAX_LIGHTS 16
 
 struct LightsInfo {
+    i32 num_directional_lights;
+    DirectionalLight directional_lights[MAX_LIGHTS];
     i32 num_point_lights;
     PointLight point_lights[MAX_LIGHTS];
+    i32 num_spot_lights;
+    SpotLight spot_lights[MAX_LIGHTS];
 };
 
-DAXA_DECL_BUFFER(Lights, {
-    LightsInfo info;
-});
+DAXA_ENABLE_BUFFER_PTR(LightsInfo)
 
 struct TextureId {
     ImageViewId image_view_id;
@@ -70,18 +54,14 @@ struct MaterialInfo {
     f32vec3 emissive_factor;
 };
 
-DAXA_DECL_BUFFER(Material, {
-    MaterialInfo info;
-});
+DAXA_ENABLE_BUFFER_PTR(MaterialInfo)
 
 struct ObjectInfo {
     f32mat4x4 model_matrix;
     f32mat4x4 normal_matrix;
 };
 
-DAXA_DECL_BUFFER(Object, {
-    ObjectInfo info;
-});
+DAXA_ENABLE_BUFFER_PTR(ObjectInfo)
 
 struct CameraInfo {
     f32mat4x4 projection_matrix;
@@ -89,28 +69,26 @@ struct CameraInfo {
     f32vec3 position;
 };
 
-/*DAXA_DECL_BUFFER_STRUCT(ObjectInfo, {
-    f32mat4x4 model_matrix;
-    f32mat4x4 normal_matrix;
-});*/
-
-DAXA_DECL_BUFFER(Camera, {
-    CameraInfo info;
-});
+DAXA_ENABLE_BUFFER_PTR(CameraInfo)
 
 struct DrawPush {
-    BufferRef(Camera) camera_info_buffer;
-    BufferRef(Object) object_info_buffer;
-    BufferRef(Lights) lights_info_buffer;
-    BufferRef(VertexBuffer) face_buffer;
-    BufferRef(Material) material_info;
-    /*TextureId irradiance_map;
-    TextureId brdfLUT;
-    TextureId prefilter_map;*/
+    daxa_RWBufferPtr(CameraInfo) camera_buffer;
+    daxa_RWBufferPtr(ObjectInfo) object_buffer;
+    daxa_RWBufferPtr(LightsInfo) lights_buffer;
+    daxa_RWBufferPtr(DrawVertex) face_buffer;
+    daxa_RWBufferPtr(MaterialInfo) material_info_buffer;
 };
 
 struct SkyboxDrawPush {
     f32mat4x4 mvp;
-    BufferRef(VertexBuffer) face_buffer;
+    daxa_RWBufferPtr(DrawVertex) face_buffer;
     TextureId env_map;
+};
+
+struct CompositionPush {
+    TextureId albedo;
+    TextureId normal;
+    TextureId position;
+    daxa_RWBufferPtr(CameraInfo) camera_buffer;
+    daxa_RWBufferPtr(LightsInfo) lights_buffer;
 };

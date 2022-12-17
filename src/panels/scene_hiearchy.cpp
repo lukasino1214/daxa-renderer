@@ -30,11 +30,68 @@ namespace dare {
             if(ImGui::Button(name.c_str())) {
                 selected_entity = entity;
             }
+
+            bool entity_deleted = false;
+            if (ImGui::BeginPopupContextItem()) {
+                if (ImGui::MenuItem("Delete Entity")) {
+                    entity_deleted = true;
+                }
+
+                ImGui::EndPopup();
+            }
+
+            if(entity_deleted) {
+                scene->destroy_entity(entity);
+                if (selected_entity == entity)
+                    selected_entity = {};
+            }
         });
+
+        if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+                selected_entity = {};
+
+        // Right-click on blank space
+        if (ImGui::BeginPopupContextWindow(nullptr, 1, false)) {
+            if (ImGui::MenuItem("Create Empty Entity"))
+                scene->create_entity("Empty Entity");
+
+            ImGui::EndPopup();
+        }
 
         ImGui::End();
         ImGui::Begin("Entity Properties");
         if(selected_entity) {
+            if (ImGui::Button("Add Component"))
+            ImGui::OpenPopup("AddComponent");
+
+        if (ImGui::BeginPopup("AddComponent")) {
+            if (ImGui::MenuItem("Directional Light")) {
+                if (!selected_entity.has_component<DirectionalLightComponent>())
+                    selected_entity.add_component<DirectionalLightComponent>();
+                else
+                    std::cout << "screw this" << std::endl;
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (ImGui::MenuItem("Point Light")) {
+                if (!selected_entity.has_component<PointLightComponent>())
+                    selected_entity.add_component<PointLightComponent>();
+                else
+                    std::cout << "screw this" << std::endl;
+                ImGui::CloseCurrentPopup();
+            }
+
+            if (ImGui::MenuItem("Spot Light")) {
+                if (!selected_entity.has_component<SpotLightComponent>())
+                    selected_entity.add_component<SpotLightComponent>();
+                else
+                    std::cout << "screw this" << std::endl;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
             draw_component<TagComponent>("TagComponent", selected_entity, [](TagComponent& comp) {
                 ImGui::Text("Entity name: %s", comp.tag.c_str());
             });
@@ -57,9 +114,23 @@ namespace dare {
                 ImGui::Text("File path: %s", comp.model->path.c_str());
             });
 
-            draw_component<LightComponent>("LightComponent", selected_entity, [](LightComponent& comp) {
+            draw_component<DirectionalLightComponent>("DirectionalLightComponent", selected_entity, [](DirectionalLightComponent& comp) {
+                ImGui::DragFloat3("Direction", &comp.direction.x);
                 ImGui::ColorPicker3("Color", &comp.color.x);
                 ImGui::DragFloat("Intensity", &comp.intensity);
+            });
+
+            draw_component<PointLightComponent>("PointLightComponent", selected_entity, [](PointLightComponent& comp) {
+                ImGui::ColorPicker3("Color", &comp.color.x);
+                ImGui::DragFloat("Intensity", &comp.intensity);
+            });
+
+            draw_component<SpotLightComponent>("SpotLightComponent", selected_entity, [](SpotLightComponent& comp) {
+                ImGui::DragFloat3("Direction", &comp.direction.x);
+                ImGui::ColorPicker3("Color", &comp.color.x);
+                ImGui::DragFloat("Intensity", &comp.intensity);
+                ImGui::DragFloat("CutOff", &comp.cut_off);
+                ImGui::DragFloat("OuterCutOff", &comp.outer_cut_off);
             });
 
         } else {

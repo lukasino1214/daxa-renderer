@@ -64,11 +64,31 @@ namespace dare {
         ModelComponent(const std::shared_ptr<Model> &_model) : model{_model} {};
     };
 
-    struct LightComponent {
+    struct DirectionalLightComponent {
+        glm::vec3 direction = { 0.0f, -1.0f, 0.0f };
         glm::vec3 color = { 1.0f, 1.0f, 1.0f };
         f32 intensity = 32.0f;
 
-        LightComponent() = default;
-        LightComponent(const LightComponent&) = default;
+        DirectionalLightComponent() = default;
+        DirectionalLightComponent(const DirectionalLightComponent&) = default;
+    };
+
+    struct PointLightComponent {
+        glm::vec3 color = { 1.0f, 1.0f, 1.0f };
+        f32 intensity = 32.0f;
+
+        PointLightComponent() = default;
+        PointLightComponent(const PointLightComponent&) = default;
+    };
+
+    struct SpotLightComponent {
+        glm::vec3 direction = { 0.0f, -1.0f, 0.0f };
+        glm::vec3 color = { 1.0f, 1.0f, 1.0f };
+        f32 intensity = 32.0f;
+        f32 cut_off = 60.0f;
+        f32 outer_cut_off = 70.0f;
+
+        SpotLightComponent() = default;
+        SpotLightComponent(const SpotLightComponent&) = default;
     };
 }

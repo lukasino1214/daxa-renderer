@@ -12,6 +12,11 @@
 
 namespace dare {
     struct RenderingSystem {
+        struct RenderingTechniques {
+            bool forward_rendering = true;
+            bool deffered_rendering = false;
+        } rendering_techniques;
+
         RenderContext context;
         std::unique_ptr<Window>& window;
         daxa::ImGuiRenderer imgui_renderer;
@@ -26,6 +31,8 @@ namespace dare {
 
         void draw(const std::shared_ptr<Scene>& scene, ControlledCamera3D& camera);
         void resize(u32 sx, u32 sy);
+
+        void render_settings_ui();
 
         auto get_render_image() -> daxa::ImageId;
     };
