@@ -77,10 +77,17 @@ namespace dare {
         {
             glm::mat4 view = camera.camera.get_view();
 
+            glm::mat4 temp_inverse_projection_mat = glm::inverse(camera.camera.proj_mat);
+            glm::mat4 temp_inverse_view_mat = glm::inverse(view);
+
             CameraInfo camera_info {
                 .projection_matrix = *reinterpret_cast<const f32mat4x4*>(&camera.camera.proj_mat),
+                .inverse_projection_matrix = *reinterpret_cast<const f32mat4x4*>(&temp_inverse_projection_mat),
                 .view_matrix = *reinterpret_cast<const f32mat4x4*>(&view),
-                .position = *reinterpret_cast<const f32vec3*>(&camera.pos)
+                .inverse_view_matrix = *reinterpret_cast<const f32mat4x4*>(&temp_inverse_view_mat),
+                .position = *reinterpret_cast<const f32vec3*>(&camera.pos),
+                .near_plane = camera.camera.near_clip,
+                .far_plane = camera.camera.far_clip
             };
 
             camera_buffer->update(cmd_list, camera_info);
@@ -130,11 +137,13 @@ namespace dare {
         if(ImGui::Checkbox("Forward Rendering", &this->rendering_techniques.forward_rendering)){
             this->rendering_techniques.deffered_rendering = false;
             this->task = std::make_unique<BasicForward>(context);
+            this->task->resize(static_cast<i32>(this->size.x), static_cast<i32>(this->size.y));
         }
 
         if(ImGui::Checkbox("Deffered Rendering", &this->rendering_techniques.deffered_rendering)){
             this->rendering_techniques.forward_rendering = false;
             this->task = std::make_unique<BasicDeffered>(context);
+            this->task->resize(static_cast<i32>(this->size.x), static_cast<i32>(this->size.y));
         }
         ImGui::End();
 

@@ -55,6 +55,8 @@ add_executable(${PROJECT_NAME}
     "src/rendering/basic_forward.cpp"
     "src/rendering/basic_deffered.hpp"
     "src/rendering/basic_deffered.cpp"
+    "src/rendering/generate_ssao.hpp"
+    "src/rendering/generate_ssao.cpp"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT yaml-cpp)

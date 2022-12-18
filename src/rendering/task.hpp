@@ -19,7 +19,7 @@ namespace dare {
         virtual void render_settings_ui() = 0;
         virtual auto settings_to_string()-> std::string = 0;
         virtual void rebuild_pipeline() = 0;
-
+        
         virtual auto get_color_image() -> daxa::ImageId = 0;
         virtual auto get_depth_image() -> daxa::ImageId = 0;
 

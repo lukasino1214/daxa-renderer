@@ -41,15 +41,23 @@ void main() {
     for(uint i = 0; i < deref(daxa_push_constant.lights_buffer).num_spot_lights; i++) {
         color += calculate_spot_light(deref(daxa_push_constant.lights_buffer).spot_lights[i], color, normal, position, camera_position);
     }
+
+    #if !defined(SETTINGS_AMBIENT_OCCLUSION_NONE)
+    color *= sample_texture(daxa_push_constant.ssao, in_uv).rrr;
+    #endif
     
     out_color = vec4(color, 1.0);
 
     #elif defined(SETTINGS_VISUALIZE_ATTACHMENT_ALBEDO)
     out_color = vec4(sample_texture(daxa_push_constant.albedo, in_uv).rgb, 1.0);
     #elif defined(SETTINGS_VISUALIZE_ATTACHMENT_NORMAL)
-    out_color = vec4(sample_texture(daxa_push_constant.normal, in_uv).rgb, 1.0);
+    out_color = vec4(sample_texture(daxa_push_constant.normal, in_uv).rgb * 0.5 + 0.5, 1.0);
     #elif defined(SETTINGS_VISUALIZE_ATTACHMENT_POSITION)
     out_color = vec4(sample_texture(daxa_push_constant.position, in_uv).rgb, 1.0);
+    #elif defined(SETTINGS_VISUALIZE_ATTACHMENT_DEPTH)
+    out_color = vec4(sample_texture(daxa_push_constant.normal, in_uv).www, 1.0);
+    #elif defined(SETTINGS_VISUALIZE_ATTACHMENT_AO)
+    out_color = vec4(sample_texture(daxa_push_constant.ssao, in_uv).rrr, 1.0);
     #endif
 
 }

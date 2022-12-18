@@ -8,6 +8,11 @@ DAXA_USE_PUSH_CONSTANT(DrawPush)
 #define CAMERA deref(daxa_push_constant.camera_buffer)
 #define MATERIAL deref(daxa_push_constant.material_info_buffer)
 
+f32 linear_depth(f32 depth) {
+	f32 z = depth * 2.0f - 1.0f; 
+	return (2.0f * CAMERA.near_plane * CAMERA.far_plane) / (CAMERA.far_plane + CAMERA.near_plane - z * (CAMERA.far_plane - CAMERA.near_plane));	
+}
+
 
 #if defined(DRAW_VERT)
 layout(location = 0) out f32vec2 v_uv;
@@ -23,19 +28,6 @@ void main() {
     gl_Position = CAMERA.projection_matrix * CAMERA.view_matrix * f32vec4(position.xyz, 1);
 
     v_uv = VERTEX.uv.xy;
-/*#if !defined(SETTINGS_NORMAL_MAPPING_USING_TANGENTS)
-    v_normal = f32mat3x3(OBJECT.normal_matrix) * VERTEX.normal.xyz;
-#else
-    f32vec3 normal = normalize(f32mat3x3(OBJECT.normal_matrix) * VERTEX.normal.xyz);
-    f32vec3 tangent = normalize(f32mat3x3(OBJECT.normal_matrix) * VERTEX.tangent.xyz);
-    
-#if defined(SETTINGS_NORMAL_MAPPING_REORTHOGONALIZE_TBN_VECTORS)
-    tangent = normalize(tangent - dot(tangent, normal) * normal);
-#endif
-
-    f32vec3 bittangent = normalize(cross(normal, tangent) * VERTEX.tangent.w);
-    v_tbn = f32mat3x3(tangent, bittangent, normal);
-#endif*/
 
 #if defined(SETTINGS_NORMAL_MAPPING_NONE)
     v_normal = normalize(f32mat3x3(OBJECT.normal_matrix) * VERTEX.normal.xyz);
@@ -104,7 +96,7 @@ void main() {
     f32vec3 normal = normalize(v_normal);
 #endif
 
-    out_normal = f32vec4(normal, 1.0);
+    out_normal = f32vec4(normal, linear_depth(gl_FragCoord.z));
 
     out_position = f32vec4(v_position, 1.0);
 }

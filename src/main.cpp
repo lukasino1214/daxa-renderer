@@ -111,6 +111,9 @@ namespace dare {
             // Cameras
             {
                 ImGui::Begin("Camera");
+                ImGui::DragFloat("near plane", &cameras[current_camera].camera.near_clip, 0.05f, 0.00001f, 1.0f);
+                ImGui::DragFloat("far plane", &cameras[current_camera].camera.far_clip, 0.05f, 0.00001f, 10000.0f);
+
                 if(ImGui::Button("Add Camera")) {
                     cameras.push_back({});
                 }

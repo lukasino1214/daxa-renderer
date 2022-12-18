@@ -65,8 +65,12 @@ DAXA_ENABLE_BUFFER_PTR(ObjectInfo)
 
 struct CameraInfo {
     f32mat4x4 projection_matrix;
+    f32mat4x4 inverse_projection_matrix;
     f32mat4x4 view_matrix;
+    f32mat4x4 inverse_view_matrix;
     f32vec3 position;
+    f32 near_plane;
+    f32 far_plane;
 };
 
 DAXA_ENABLE_BUFFER_PTR(CameraInfo)
@@ -89,6 +93,31 @@ struct CompositionPush {
     TextureId albedo;
     TextureId normal;
     TextureId position;
+    TextureId ssao;
     daxa_RWBufferPtr(CameraInfo) camera_buffer;
     daxa_RWBufferPtr(LightsInfo) lights_buffer;
+};
+
+#define SSAO_KERNEL_SIZE 64
+#define SSAO_RADIUS 0.3f
+#define SSAO_NOISE_DIM 4
+
+
+struct SSAOKernel {
+    f32vec4 samples[SSAO_KERNEL_SIZE];
+};
+
+
+DAXA_ENABLE_BUFFER_PTR(SSAOKernel)
+
+struct SSAOGenerationPush {
+    TextureId normal;
+    TextureId position;
+    TextureId ssao_noise;
+    daxa_RWBufferPtr(CameraInfo) camera_buffer;
+    daxa_RWBufferPtr(SSAOKernel) ssao_kernel_buffer;
+};
+
+struct SSAOBlurPush {
+    TextureId ssao;
 };

@@ -15,7 +15,7 @@ using namespace daxa::types;
 namespace dare {
     struct Camera3D {
         f32 fov = 98.6f, aspect = 1.0f;
-        f32 near_clip = 0.01f, far_clip = 1000.0f;
+        f32 near_clip = 0.1f, far_clip = 64.0f;
         glm::mat4 proj_mat{};
         glm::mat4 vtrn_mat{};
         glm::mat4 vrot_mat{};
