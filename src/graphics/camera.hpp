@@ -23,6 +23,7 @@ namespace dare {
         void resize(i32 size_x, i32 size_y) {
             aspect = static_cast<f32>(size_x) / static_cast<f32>(size_y);
             proj_mat = glm::perspective(glm::radians(fov), aspect, near_clip, far_clip);
+            proj_mat[1][1] *= -1.0f;
         }
 
         void set_pos(glm::vec3 pos) {

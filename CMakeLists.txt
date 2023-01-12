@@ -59,6 +59,6 @@ add_executable(${PROJECT_NAME}
     "src/rendering/generate_ssao.cpp"
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw EnTT::EnTT yaml-cpp)
+target_link_libraries(${PROJECT_NAME} daxa::daxa glm::glm glfw EnTT::EnTT yaml-cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${TINYGLTF_INCLUDE_DIRS})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

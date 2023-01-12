@@ -69,14 +69,14 @@ namespace dare {
             .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(size.x), .height = static_cast<u32>(size.y)},
         });
 
-        cmd_list.set_viewport({
+        /*cmd_list.set_viewport({
             .x = 0.0f,
             .y = size.y,
             .width = size.x,
             .height = -size.y,
             .min_depth = 0.0f,
             .max_depth = 1.0f 
-        });
+        });*/
 
         cmd_list.set_pipeline(draw_pipeline);
 

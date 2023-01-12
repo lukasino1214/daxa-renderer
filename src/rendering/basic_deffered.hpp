@@ -57,7 +57,7 @@ namespace dare {
         virtual auto get_color_image() -> daxa::ImageId override { return this->color_image; }
         virtual auto get_depth_image() -> daxa::ImageId override { return this->depth_image; }
 
-        SSAO::SSAOData ssao_data;
+        //SSAO::SSAOData ssao_data;
 
         daxa::ImageId color_image;
         daxa::ImageId albedo_image;
@@ -65,16 +65,16 @@ namespace dare {
         daxa::ImageId position_image;
         daxa::ImageId depth_image;
 
-        daxa::ImageId ssao_image;
-        daxa::ImageId ssao_blur_image;
+        //daxa::ImageId ssao_image;
+        //daxa::ImageId ssao_blur_image;
 
         daxa::SamplerId sampler;
 
         daxa::RasterPipeline g_buffer_gather_pipeline;
         daxa::RasterPipeline composition_pipeline;
 
-        daxa::RasterPipeline ssao_generation_pipeline;
-        daxa::RasterPipeline ssao_blur_pipeline;
+        /*daxa::RasterPipeline ssao_generation_pipeline;
+        daxa::RasterPipeline ssao_blur_pipeline;*/
         bool has_rebuild_pipeline = true;        
     };
 }

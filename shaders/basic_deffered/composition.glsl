@@ -42,9 +42,9 @@ void main() {
         color += calculate_spot_light(deref(daxa_push_constant.lights_buffer).spot_lights[i], color, normal, position, camera_position);
     }
 
-    #if !defined(SETTINGS_AMBIENT_OCCLUSION_NONE)
+    /*#if !defined(SETTINGS_AMBIENT_OCCLUSION_NONE)
     color *= sample_texture(daxa_push_constant.ssao, in_uv).rrr;
-    #endif
+    #endif*/
     
     out_color = vec4(color, 1.0);
 

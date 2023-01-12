@@ -45,6 +45,12 @@ void main() {
 #endif
 
     v_position = position.xyz;
+
+    /*gl_Position = CAMERA.projection_matrix * CAMERA.view_matrix * OBJECT.model_matrix * f32vec4(VERTEX.position.xyz, 1);
+    v_uv = VERTEX.uv.xy;
+    v_position = vec3(CAMERA.view_matrix * OBJECT.model_matrix * f32vec4(VERTEX.position.xyz, 1.0));
+    mat3 normalMatrix = transpose(inverse(mat3(CAMERA.view_matrix * OBJECT.model_matrix)));
+    v_normal = normalMatrix * VERTEX.normal.xyz;*/
 }
 
 #elif defined(DRAW_FRAG)
@@ -96,6 +102,7 @@ void main() {
     f32vec3 normal = normalize(v_normal);
 #endif
 
+    //f32vec3 normal = normalize(v_normal) * 0.5 + 0.5;
     out_normal = f32vec4(normal, linear_depth(gl_FragCoord.z));
 
     out_position = f32vec4(v_position, 1.0);

@@ -21,18 +21,16 @@ layout(location = 0) in f32vec2 in_uv;
 layout (location = 0) out f32 out_ssao;
 
 void main() {
+  
+        vec3 fragPos = (f32vec4(sample_texture(daxa_push_constant.position, in_uv).rgb, 0.0)).xyz;
+	    vec3 normal = normalize(sample_texture(daxa_push_constant.normal, in_uv).rgb) * 2.0 - 1.0;
     
-        vec3 fragPos = (CAMERA.view_matrix * f32vec4(sample_texture(daxa_push_constant.position, in_uv).rgb, 0.0)).xyz;
-	    vec3 normal = (normalize(CAMERA.inverse_view_matrix * f32vec4(normalize(sample_texture(daxa_push_constant.normal, in_uv).rgb), 0.0))).xyz;
-    
-    /*vec3 fragPos = sample_texture(daxa_push_constant.position, in_uv).rgb;
-	vec3 normal = normalize(sample_texture(daxa_push_constant.normal, in_uv).rgb * 2.0 - 1.0);*/
 
 	// Get a random vector using a noise lookup
 	ivec2 texDim = texture_size(daxa_push_constant.position, 0); 
 	ivec2 noiseDim = texture_size(daxa_push_constant.ssao_noise, 0);
 	const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) * in_uv;  
-	vec3 randomVec = sample_texture(daxa_push_constant.ssao_noise, noiseUV).xyz;
+	vec3 randomVec = sample_texture(daxa_push_constant.ssao_noise, noiseUV).xyz * 2.0 - 1.0;
 	
 	// Create TBN matrix
 	vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));

@@ -93,7 +93,7 @@ struct CompositionPush {
     TextureId albedo;
     TextureId normal;
     TextureId position;
-    TextureId ssao;
+    //TextureId ssao;
     daxa_RWBufferPtr(CameraInfo) camera_buffer;
     daxa_RWBufferPtr(LightsInfo) lights_buffer;
 };

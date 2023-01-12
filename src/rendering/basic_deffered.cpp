@@ -67,7 +67,7 @@ namespace dare {
             .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY
         });
 
-        this->ssao_image = this->context.device.create_image({
+        /*this->ssao_image = this->context.device.create_image({
             .dimensions = 2,
             .format = daxa::Format::R8_UNORM,
             .aspect = daxa::ImageAspectFlagBits::COLOR,
@@ -89,7 +89,7 @@ namespace dare {
             .sample_count = 1,
             .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
             .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY
-        });
+        });*/
 
         this->sampler = this->context.device.create_sampler({
             .magnification_filter = daxa::Filter::LINEAR,
@@ -108,7 +108,7 @@ namespace dare {
             .enable_unnormalized_coordinates = false,
         });
 
-        this->ssao_data = SSAO::generate(this->context.device);
+        //this->ssao_data = SSAO::generate(this->context.device);
 
         rebuild_pipeline();
     }
@@ -119,11 +119,11 @@ namespace dare {
         this->context.device.destroy_image(normal_image);
         this->context.device.destroy_image(position_image);
         this->context.device.destroy_image(depth_image);
-        this->context.device.destroy_image(ssao_image);
-        this->context.device.destroy_image(ssao_blur_image);
+        /*this->context.device.destroy_image(ssao_image);
+        this->context.device.destroy_image(ssao_blur_image);*/
         this->context.device.destroy_sampler(sampler);
 
-        SSAO::cleanup(this->context.device, this->ssao_data);
+        //SSAO::cleanup(this->context.device, this->ssao_data);
     }
 
     void BasicDeffered::render(daxa::CommandList& cmd_list, const std::shared_ptr<Scene>& scene, daxa::BufferDeviceAddress camera_buffer) {
@@ -191,15 +191,6 @@ namespace dare {
             .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(size.x), .height = static_cast<u32>(size.y)},
         });
 
-        cmd_list.set_viewport({
-            .x = 0.0f,
-            .y = size.y,
-            .width = size.x,
-            .height = -size.y,
-            .min_depth = 0.0f,
-            .max_depth = 1.0f 
-        });
-
         cmd_list.set_pipeline(g_buffer_gather_pipeline);
 
         scene->iterate([&](Entity entity){
@@ -219,7 +210,7 @@ namespace dare {
         cmd_list.end_renderpass();
 
         // SSAO generation
-        if(this->settings.ambient_occlusion.ssao) {
+        /*if(this->settings.ambient_occlusion.ssao) {
             cmd_list.begin_renderpass({
                 .color_attachments = {
                     {
@@ -266,7 +257,7 @@ namespace dare {
             cmd_list.draw({ .vertex_count = 3 });
 
             cmd_list.end_renderpass();
-        }
+        }*/
 
         // Composition
 
@@ -287,7 +278,7 @@ namespace dare {
             .albedo = { .image_view_id = albedo_image.default_view(), .sampler_id = sampler },
             .normal = { .image_view_id = normal_image.default_view(), .sampler_id = sampler },
             .position = { .image_view_id = position_image.default_view(), .sampler_id = sampler },
-            .ssao = { .image_view_id = this->settings.ambient_occlusion.ssao_blur ? ssao_blur_image.default_view() : ssao_image.default_view(), .sampler_id = sampler },
+            //.ssao = { .image_view_id = this->settings.ambient_occlusion.ssao_blur ? ssao_blur_image.default_view() : ssao_image.default_view(), .sampler_id = sampler },
             .camera_buffer = camera_buffer,
             .lights_buffer = scene->lights_buffer->buffer_address
         });
@@ -366,7 +357,7 @@ namespace dare {
             .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY
         });
 
-        this->context.device.destroy_image(this->ssao_image);
+        /*this->context.device.destroy_image(this->ssao_image);
         this->ssao_image = this->context.device.create_image({
             .dimensions = 2,
             .format = daxa::Format::R8_UNORM,
@@ -390,7 +381,7 @@ namespace dare {
             .sample_count = 1,
             .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
             .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY
-        });
+        });*/
     }
 
     void BasicDeffered::render_settings_ui() {
@@ -562,7 +553,7 @@ namespace dare {
             ImGui::TreePop();
         }
 
-        if(ImGui::TreeNodeEx("Ambient Occlusion")) {
+        /*if(ImGui::TreeNodeEx("Ambient Occlusion")) {
             if(ImGui::Checkbox("None", &this->settings.ambient_occlusion.none)) {
                 this->settings.ambient_occlusion.ssao = false;
                 this->settings.ambient_occlusion.ssao_blur = false;
@@ -584,7 +575,7 @@ namespace dare {
             }
 
             ImGui::TreePop();
-        }
+        }*/
 
         ImGui::End();
     }
@@ -732,7 +723,7 @@ namespace dare {
                 .debug_name = APPNAME_PREFIX("composition_pipeline"),
             }).value();
 
-            std::string ssao_generation_code = this->settings_to_string() + file_to_string("./shaders/basic_deffered/ssao_generation.glsl");
+            /*std::string ssao_generation_code = this->settings_to_string() + file_to_string("./shaders/basic_deffered/ssao_generation.glsl");
             this->ssao_generation_pipeline = this->context.pipeline_compiler.create_raster_pipeline({
                 .vertex_shader_info = {
                     .source = daxa::ShaderCode{ ssao_generation_code }, 
@@ -774,7 +765,7 @@ namespace dare {
                 },
                 .push_constant_size = sizeof(SSAOBlurPush),
                 .debug_name = APPNAME_PREFIX("ssao_blur_pipeline"),
-            }).value();
+            }).value();*/
 
             this->has_rebuild_pipeline = false;
             std::cout << "pipeline reloaded" << std::endl;
