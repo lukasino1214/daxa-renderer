@@ -1,13 +1,14 @@
 {
-    "name": "daxa-template",
+    "name": "daxa-renderer",
     "version": "0.1.0",
     "dependencies": [
         {
             "name": "daxa",
             "features": [
-                "utils",
-                "glslang",
-                "dxc" 
+                "utils-imgui",
+                "utils-mem",
+                "utils-pipeline-manager-glslang",
+                "utils-task-list"
             ]
         },
         {
@@ -30,9 +31,9 @@
         "entt",
         "yaml-cpp",
         "meshoptimizer",
-        "openal-soft"
+        "fastgltf"
     ],
-    "builtin-baseline": "a1737683a6f8ec5d8673890581c2a8c55838d411",
+    "builtin-baseline": "85c4f11f8d635c408ba63062fd261c14678c0132",
     "overrides": [
         {
             "name": "glfw3",

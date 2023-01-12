@@ -1,14 +1,6 @@
 #pragma once
-
-//#include "lighting.glsl"
-
 #define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
 #include <daxa/daxa.inl>
-
-#define APPNAME "Daxa Renderer"
-#define APPNAME_PREFIX(x) ("[" APPNAME "] " x)
-
-#include "common/lighting.glsl"
 
 struct DrawVertex {
     f32vec3 position;
@@ -18,6 +10,32 @@ struct DrawVertex {
 };
 
 DAXA_ENABLE_BUFFER_PTR(DrawVertex)
+
+struct TextureId {
+    daxa_Image2Df32 image_view_id;
+    daxa_SamplerId sampler_id;
+};
+
+struct DirectionalLight {
+    f32vec3 direction;
+    f32vec3 color;
+    f32 intensity;
+};
+
+struct PointLight {
+    f32vec3 position;
+    f32vec3 color;
+    f32 intensity;
+};
+
+struct SpotLight {
+    f32vec3 position;
+    f32vec3 direction;
+    f32vec3 color;
+    f32 intensity;
+    f32 cut_off;
+    f32 outer_cut_off;     
+};
 
 #define MAX_LIGHTS 16
 
@@ -31,11 +49,6 @@ struct LightsInfo {
 };
 
 DAXA_ENABLE_BUFFER_PTR(LightsInfo)
-
-struct TextureId {
-    ImageViewId image_view_id;
-    SamplerId sampler_id;
-};
 
 struct MaterialInfo {
     TextureId albedo;
@@ -76,48 +89,7 @@ struct CameraInfo {
 DAXA_ENABLE_BUFFER_PTR(CameraInfo)
 
 struct DrawPush {
-    daxa_RWBufferPtr(CameraInfo) camera_buffer;
-    daxa_RWBufferPtr(ObjectInfo) object_buffer;
-    daxa_RWBufferPtr(LightsInfo) lights_buffer;
     daxa_RWBufferPtr(DrawVertex) face_buffer;
     daxa_RWBufferPtr(MaterialInfo) material_info_buffer;
-};
-
-struct SkyboxDrawPush {
     f32mat4x4 mvp;
-    daxa_RWBufferPtr(DrawVertex) face_buffer;
-    TextureId env_map;
-};
-
-struct CompositionPush {
-    TextureId albedo;
-    TextureId normal;
-    TextureId position;
-    //TextureId ssao;
-    daxa_RWBufferPtr(CameraInfo) camera_buffer;
-    daxa_RWBufferPtr(LightsInfo) lights_buffer;
-};
-
-#define SSAO_KERNEL_SIZE 64
-#define SSAO_RADIUS 0.3f
-#define SSAO_NOISE_DIM 4
-
-
-struct SSAOKernel {
-    f32vec4 samples[SSAO_KERNEL_SIZE];
-};
-
-
-DAXA_ENABLE_BUFFER_PTR(SSAOKernel)
-
-struct SSAOGenerationPush {
-    TextureId normal;
-    TextureId position;
-    TextureId ssao_noise;
-    daxa_RWBufferPtr(CameraInfo) camera_buffer;
-    daxa_RWBufferPtr(SSAOKernel) ssao_kernel_buffer;
-};
-
-struct SSAOBlurPush {
-    TextureId ssao;
 };
