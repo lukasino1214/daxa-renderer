@@ -2,16 +2,23 @@
 
 #include <daxa/daxa.hpp>
 #include <daxa/utils/pipeline_manager.hpp>
+#include <daxa/utils/imgui.hpp>
+#include <imgui_impl_glfw.h>
+#include <imgui.h>
 using namespace daxa::types;
 
-#include "texture.hpp"
-#include "model.hpp"
+#include "graphics/texture.hpp"
+#include "graphics/model.hpp"
 
 #include "window.hpp"
-#include "camera.hpp"
+#include "graphics/camera.hpp"
 
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
+
+#include "data/scene.hpp"
+#include "panels/scene_hiearchy.hpp"
+using namespace dare;
 
 struct App : AppWindow<App> {
     App();
@@ -33,6 +40,7 @@ struct App : AppWindow<App> {
     daxa::Device device;
     daxa::Swapchain swapchain;
     daxa::PipelineManager pipeline_manager;
+    daxa::ImGuiRenderer imgui_renderer;
 
     Clock::time_point start = Clock::now(), prev_time = start;
     f32 elapsed_s = 1.0f;
@@ -43,7 +51,12 @@ struct App : AppWindow<App> {
 
     std::shared_ptr<daxa::RasterPipeline> raster_pipeline;
     daxa::ImageId depth_image;
+    daxa::ImageId albedo_image;
+    daxa::ImageId normal_image;
+    daxa::ImageId position_image;
 
-    std::unique_ptr<Model> model;
-    std::unique_ptr<Texture> texture;
+    std::unique_ptr<Buffer<CameraInfo>> camera_buffer;
+    std::shared_ptr<SceneHiearchyPanel> scene_hiearchy;
+
+    std::shared_ptr<Scene> scene;
 };

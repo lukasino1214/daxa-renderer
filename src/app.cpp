@@ -5,6 +5,10 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include "data/entity.hpp"
+#include "data/components.hpp"
+#include "data/scene_serializer.hpp"
+
 #include <thread>
 
 App::App() : AppWindow<App>("poggers")  {
@@ -43,14 +47,16 @@ App::App() : AppWindow<App>("poggers")  {
     this->raster_pipeline = pipeline_manager.add_raster_pipeline({
         .vertex_shader_info = {.source = daxa::ShaderFile{"draw.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
         .fragment_shader_info = {.source = daxa::ShaderFile{"draw.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
-        .color_attachments = {{ .format = swapchain.get_format() }},
+        .color_attachments = {
+            { .format = swapchain.get_format() },
+        },
         .depth_test = {
             .depth_attachment_format = daxa::Format::D24_UNORM_S8_UINT,
             .enable_depth_test = true,
             .enable_depth_write = true,
         },
         .raster = {
-            .face_culling = daxa::FaceCullFlagBits::NONE
+            .face_culling = daxa::FaceCullFlagBits::FRONT_BIT
         },
         .push_constant_size = sizeof(DrawPush),
         .debug_name = "raster_pipeline",
@@ -63,8 +69,38 @@ App::App() : AppWindow<App>("poggers")  {
         .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT,
     });
 
-    this->model = std::make_unique<Model>(device, "./assets/models/Sponza/Sponza.gltf");
-    
+    this->albedo_image = device.create_image({
+        .format = this->swapchain.get_format(),
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {size_x, size_y, 1},
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+    });
+
+    this->normal_image = device.create_image({
+        .format = daxa::Format::R16G16B16A16_SFLOAT,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {size_x, size_y, 1},
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+    });
+
+    this->position_image = device.create_image({
+        .format = daxa::Format::R16G16B16A16_SFLOAT,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {size_x, size_y, 1},
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+    });
+
+    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForVulkan(glfw_window_ptr, true);
+    imgui_renderer =  daxa::ImGuiRenderer({
+        .device = device,
+        .format = swapchain.get_format(),
+    });
+
+    this->scene = SceneSerializer::deserialize(this->device, "test.scene");
+    this->scene_hiearchy = std::make_shared<SceneHiearchyPanel>(this->scene);
+    camera_buffer = std::make_unique<Buffer<CameraInfo>>(this->device);
+
     camera.camera.resize(size_x, size_y);
 }
 
@@ -72,6 +108,10 @@ App::~App() {
     device.wait_idle();
     device.collect_garbage();
     device.destroy_image(depth_image);
+    device.destroy_image(albedo_image);
+    device.destroy_image(normal_image);
+    device.destroy_image(position_image);
+    ImGui_ImplGlfw_Shutdown();
 }
 
 bool App::update() {
@@ -90,7 +130,22 @@ bool App::update() {
     return false;
 }
 
-void App::ui_update() {}
+void App::ui_update() {
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    // Debug
+    {
+        ImGui::Begin("Debug");
+        ImGui::Text("Frame time: %f", elapsed_s);
+        ImGui::Text("Frame Per Second: %f", 1.0f / elapsed_s);
+        ImGui::End();
+    }
+
+    scene_hiearchy->draw();
+
+    ImGui::Render();
+}
 
 void App::on_update() {
     auto now = Clock::now();
@@ -112,7 +167,28 @@ void App::render() {
         return;
     }
 
+    scene->update();
+
     daxa::CommandList cmd_list = device.create_command_list({ .debug_name = "main loop cmd list" });
+
+    {
+        glm::mat4 view = camera.camera.get_view();
+
+        glm::mat4 temp_inverse_projection_mat = glm::inverse(camera.camera.proj_mat);
+        glm::mat4 temp_inverse_view_mat = glm::inverse(view);
+
+        CameraInfo camera_info {
+            .projection_matrix = *reinterpret_cast<const f32mat4x4*>(&camera.camera.proj_mat),
+            .inverse_projection_matrix = *reinterpret_cast<const f32mat4x4*>(&temp_inverse_projection_mat),
+            .view_matrix = *reinterpret_cast<const f32mat4x4*>(&view),
+            .inverse_view_matrix = *reinterpret_cast<const f32mat4x4*>(&temp_inverse_view_mat),
+            .position = *reinterpret_cast<const f32vec3*>(&camera.pos),
+            .near_plane = camera.camera.near_clip,
+            .far_plane = camera.camera.far_clip
+        };
+
+        camera_buffer->update(cmd_list, camera_info);
+    }
 
     cmd_list.pipeline_barrier_image_transition({
         .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
@@ -144,16 +220,24 @@ void App::render() {
     });
     cmd_list.set_pipeline(*raster_pipeline);
 
-    glm::mat4 m = glm::translate(glm::mat4(1.0f), {0.0f, 5.0f, 0.0f}) * glm::toMat4(glm::quat({0.0f, glm::radians(90.0f), glm::radians(180.0f)})) * glm::scale(glm::mat4(1.0f), {0.03f, 0.03f, 0.03f});
-
-    glm::mat4 vp =  camera.camera.get_vp() * m;
-
     DrawPush push;
-    push.mvp = *reinterpret_cast<const f32mat4x4*>(&vp);
+    push.lights_buffer = scene->lights_buffer->buffer_address;
+    push.camera_buffer = camera_buffer->buffer_address;
 
-    model->draw(cmd_list, push);
+    scene->iterate([&](Entity entity){
+        if(entity.has_component<ModelComponent>()) {
+            auto& model = entity.get_component<ModelComponent>().model;
+
+            push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
+
+            model->bind_index_buffer(cmd_list);
+            model->draw(cmd_list, push);
+        }
+    });
 
     cmd_list.end_renderpass();
+
+    imgui_renderer.record_commands(ImGui::GetDrawData(), cmd_list, swapchain_image, size_x, size_y);
 
     cmd_list.pipeline_barrier_image_transition({
         .awaited_pipeline_access = daxa::AccessConsts::ALL_GRAPHICS_READ_WRITE,
@@ -219,6 +303,27 @@ void App::on_resize(u32 sx, u32 sy) {
             .aspect = daxa::ImageAspectFlagBits::DEPTH | daxa::ImageAspectFlagBits::STENCIL,
             .size = {size_x, size_y, 1},
             .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT,
+        });
+        device.destroy_image(albedo_image);
+        this->albedo_image = device.create_image({
+            .format = this->swapchain.get_format(),
+            .aspect = daxa::ImageAspectFlagBits::COLOR,
+            .size = {size_x, size_y, 1},
+            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        });
+        device.destroy_image(normal_image);
+        this->normal_image = device.create_image({
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
+            .aspect = daxa::ImageAspectFlagBits::COLOR,
+            .size = {size_x, size_y, 1},
+            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        });
+        device.destroy_image(position_image);
+        this->position_image = device.create_image({
+            .format = daxa::Format::R16G16B16A16_SFLOAT,
+            .aspect = daxa::ImageAspectFlagBits::COLOR,
+            .size = {size_x, size_y, 1},
+            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
         });
 
         on_update();

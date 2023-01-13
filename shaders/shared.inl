@@ -2,6 +2,8 @@
 #define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
 #include <daxa/daxa.inl>
 
+#include "lighting.glsl"
+
 struct DrawVertex {
     f32vec3 position;
     f32vec3 normal;
@@ -14,27 +16,6 @@ DAXA_ENABLE_BUFFER_PTR(DrawVertex)
 struct TextureId {
     daxa_Image2Df32 image_view_id;
     daxa_SamplerId sampler_id;
-};
-
-struct DirectionalLight {
-    f32vec3 direction;
-    f32vec3 color;
-    f32 intensity;
-};
-
-struct PointLight {
-    f32vec3 position;
-    f32vec3 color;
-    f32 intensity;
-};
-
-struct SpotLight {
-    f32vec3 position;
-    f32vec3 direction;
-    f32vec3 color;
-    f32 intensity;
-    f32 cut_off;
-    f32 outer_cut_off;     
 };
 
 #define MAX_LIGHTS 16
@@ -91,5 +72,8 @@ DAXA_ENABLE_BUFFER_PTR(CameraInfo)
 struct DrawPush {
     daxa_RWBufferPtr(DrawVertex) face_buffer;
     daxa_RWBufferPtr(MaterialInfo) material_info_buffer;
-    f32mat4x4 mvp;
+    daxa_RWBufferPtr(LightsInfo) lights_buffer;
+    daxa_RWBufferPtr(CameraInfo) camera_buffer;
+    daxa_RWBufferPtr(ObjectInfo) object_buffer;
+
 };
