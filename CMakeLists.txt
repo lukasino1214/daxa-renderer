@@ -35,6 +35,8 @@ add_executable(${PROJECT_NAME}
     "src/panels/scene_hiearchy.cpp"
     "src/panels/viewport_panel.hpp"    
     "src/panels/viewport_panel.cpp"
+    "src/bloom.hpp"
+    "src/bloom.cpp"
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw stb_interface fastgltf::fastgltf yaml-cpp EnTT::EnTT imgui::imgui)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

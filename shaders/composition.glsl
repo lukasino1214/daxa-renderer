@@ -47,6 +47,10 @@ void main() {
         ambient += calculate_spot_light(LIGHTS.spot_lights[i], color.rgb, normal.xyz, position.xyz, camera_position);
     }
 
+    f32vec3 bloom = sample_texture(daxa_push_constant.emissive, in_uv).rgb;
+
+    ambient += bloom;
+
     out_color = f32vec4(ambient, 1.0);
 }
 

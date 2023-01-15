@@ -20,6 +20,8 @@ using Clock = std::chrono::high_resolution_clock;
 #include "panels/scene_hiearchy.hpp"
 using namespace dare;
 
+#include "bloom.hpp"
+
 struct App : AppWindow<App> {
     App();
     ~App();
@@ -57,7 +59,7 @@ struct App : AppWindow<App> {
     daxa::ImageId depth_image;
     daxa::ImageId albedo_image;
     daxa::ImageId normal_image;
-    daxa::ImageId position_image;
+    daxa::ImageId emissive_image;
 
     daxa::ImageId ssao_image;
     daxa::ImageId ssao_blur_image;
@@ -69,6 +71,8 @@ struct App : AppWindow<App> {
 
     std::unique_ptr<Buffer<CameraInfo>> camera_buffer;
     std::shared_ptr<SceneHiearchyPanel> scene_hiearchy;
+
+    std::unique_ptr<BloomRenderer> bloom_renderer;
 
     std::shared_ptr<Scene> scene;
 };

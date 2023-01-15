@@ -81,7 +81,7 @@ struct DrawPush {
 struct CompositionPush {
     TextureId albedo;
     TextureId normal;
-    TextureId position;
+    TextureId emissive;
     TextureId depth;
     TextureId ssao;
     daxa_RWBufferPtr(LightsInfo) lights_buffer;
@@ -96,4 +96,10 @@ struct SSAOGenerationPush {
 
 struct SSAOBlurPush {
     TextureId ssao;
+};
+
+struct BloomPush {
+    TextureId src_texture;
+    f32vec2 src_resolution;
+    f32 filter_radius;
 };

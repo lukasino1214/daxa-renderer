@@ -98,7 +98,7 @@ App::App() : AppWindow<App>("poggers")  {
         .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
     });
 
-    this->position_image = device.create_image({
+    this->emissive_image = device.create_image({
         .format = daxa::Format::R16G16B16A16_SFLOAT,
         .aspect = daxa::ImageAspectFlagBits::COLOR,
         .size = {size_x, size_y, 1},
@@ -184,12 +184,26 @@ App::App() : AppWindow<App>("poggers")  {
         .device = device,
         .format = swapchain.get_format(),
     });
+    //BloomFBO(device, {size_x, size_y}, 6);
+
+    bloom_renderer = std::make_unique<BloomRenderer>(pipeline_manager, device, glm::ivec2{size_x, size_y});
 
     this->scene = SceneSerializer::deserialize(this->device, "test.scene");
+    //this->scene = std::make_shared<Scene>(device);
     this->scene_hiearchy = std::make_shared<SceneHiearchyPanel>(this->scene);
     camera_buffer = std::make_unique<Buffer<CameraInfo>>(this->device);
 
     camera.camera.resize(size_x, size_y);
+
+    Entity entity = scene->create_entity("helment");
+    auto model = std::make_shared<Model>(device, "assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf");
+    entity.add_component<ModelComponent>(model);
+
+    auto& comp = entity.get_component<TransformComponent>();
+    comp.translation = {0.0f, 3.0f, 0.0f};
+    comp.rotation = {0.0f, 0.0f, 0.0f};
+    comp.scale = {1.0f, 1.0f, 1.0f};
+
 }
 
 App::~App() {
@@ -198,7 +212,7 @@ App::~App() {
     device.destroy_image(depth_image);
     device.destroy_image(albedo_image);
     device.destroy_image(normal_image);
-    device.destroy_image(position_image);
+    device.destroy_image(emissive_image);
     device.destroy_image(ssao_image);
     device.destroy_image(ssao_blur_image);
     device.destroy_sampler(sampler);
@@ -314,7 +328,7 @@ void App::render() {
         .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
         .before_layout = daxa::ImageLayout::UNDEFINED,
         .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
-        .image_id = position_image
+        .image_id = emissive_image
     });
 
     cmd_list.begin_renderpass({
@@ -322,7 +336,7 @@ void App::render() {
             {
                 .image_view = this->albedo_image.default_view(),
                 .load_op = daxa::AttachmentLoadOp::CLEAR,
-                .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
+                .clear_value = std::array<f32, 4>{0.3f, 0.2f, 0.8f, 1.0f},
             },
             {
                 .image_view = this->normal_image.default_view(),
@@ -330,7 +344,7 @@ void App::render() {
                 .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
             },
             {
-                .image_view = this->position_image.default_view(),
+                .image_view = this->emissive_image.default_view(),
                 .load_op = daxa::AttachmentLoadOp::CLEAR,
                 .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
             },
@@ -398,6 +412,8 @@ void App::render() {
     cmd_list.draw({ .vertex_count = 3 });
     cmd_list.end_renderpass();
 
+    bloom_renderer->render(cmd_list, emissive_image, sampler);
+
     cmd_list.begin_renderpass({
         .color_attachments = {
             {
@@ -414,7 +430,7 @@ void App::render() {
     cmd_list.push_constant(CompositionPush {
         .albedo = { .image_view_id = albedo_image.default_view(), .sampler_id = sampler },
         .normal = { .image_view_id = normal_image.default_view(), .sampler_id = sampler },
-        .position = { .image_view_id = position_image.default_view(), .sampler_id = sampler },
+        .emissive = { .image_view_id = emissive_image.default_view(), .sampler_id = sampler },
         .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
         .ssao = { .image_view_id = ssao_blur_image.default_view(), .sampler_id = sampler },
         .lights_buffer = scene->lights_buffer->buffer_address,
@@ -507,8 +523,8 @@ void App::on_resize(u32 sx, u32 sy) {
             .size = {size_x, size_y, 1},
             .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
         });
-        device.destroy_image(position_image);
-        this->position_image = device.create_image({
+        device.destroy_image(emissive_image);
+        this->emissive_image = device.create_image({
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .aspect = daxa::ImageAspectFlagBits::COLOR,
             .size = {size_x, size_y, 1},
