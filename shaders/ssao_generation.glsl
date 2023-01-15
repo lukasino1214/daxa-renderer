@@ -1,10 +1,14 @@
-#define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
-#define DAXA_ENABLE_IMAGE_OVERLOADS_BASIC 1
 #include <shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(SSAOGenerationPush)
 
-const vec3 kernelSamples[26] = { // HIGH (26 samples)
+#include "utils/noise.glsl"
+#include "utils/core.glsl"
+#include "utils/position_from_depth.glsl"
+
+#define KERNEL_SIZE 26
+
+const vec3 kernelSamples[KERNEL_SIZE] = { // HIGH (26 samples)
         vec3(0.2196607,0.9032637,0.2254677),
         vec3(0.05916681,0.2201506,0.1430302),
         vec3(-0.4152246,0.1320857,0.7036734),
@@ -33,54 +37,7 @@ const vec3 kernelSamples[26] = { // HIGH (26 samples)
         vec3(0.2448421,-0.1610962,0.1289366)
     };
 
-float rand(vec2 c) {
-	return fract(sin(dot(c.xy, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-float noise(vec2 p, float freq) {
-	float unit = 2560 / freq;
-	vec2 ij = floor(p / unit);
-	vec2 xy = mod(p, unit) / unit;
-	//xy = 3.*xy*xy-2.*xy*xy*xy;
-	xy = .5 * (1. - cos(3.14159265359 * xy));
-	float a = rand((ij + vec2(0., 0.)));
-	float b = rand((ij + vec2(1., 0.)));
-	float c = rand((ij + vec2(0., 1.)));
-	float d = rand((ij + vec2(1., 1.)));
-	float x1 = mix(a, b, xy.x);
-	float x2 = mix(c, d, xy.x);
-	return mix(x1, x2, xy.y);
-}
-
-float pNoise(vec2 p, int res) {
-	float persistance = .5;
-	float n = 0.;
-	float normK = 0.;
-	float f = 4.;
-	float amp = 1.;
-	int iCount = 0;
-	for (int i = 0; i < 50; i++) {
-		n += amp * noise(p, f);
-		f *= 2.;
-		normK += amp;
-		amp *= persistance;
-		if (iCount == res) break;
-		iCount++;
-	}
-	float nf = n / normK;
-	return nf * nf * nf * nf;
-}
-
 #define SSAO_RADIUS 0.3
-
-#define VERTEX deref(daxa_push_constant.face_buffer[gl_VertexIndex])
-#define OBJECT deref(daxa_push_constant.object_buffer)
-#define CAMERA deref(daxa_push_constant.camera_buffer)
-#define MATERIAL deref(daxa_push_constant.material_info_buffer)
-#define LIGHTS deref(daxa_push_constant.lights_buffer)
-
-#define sample_texture(tex, uv) texture(tex.image_view_id, tex.sampler_id, uv)
-#define texture_size(tex, mip) textureSize(tex.image_view_id, tex.sampler_id, mip)
 
 #if defined(DRAW_VERT)
 
@@ -97,61 +54,44 @@ layout(location = 0) in f32vec2 in_uv;
 
 layout (location = 0) out f32 out_ssao;
 
-vec3 get_view_position_from_depth(vec2 uv, float depth) {
-    vec4 clipSpacePosition = vec4(uv * 2.0 - 1.0, depth, 1.0);
-    vec4 viewSpacePosition = CAMERA.inverse_projection_matrix * clipSpacePosition;
-
-    viewSpacePosition /= viewSpacePosition.w;
-
-    return viewSpacePosition.xyz;
-}
-
 void main() {
   
-    vec3 fragPos = get_view_position_from_depth(in_uv, sample_texture(daxa_push_constant.depth, in_uv).r);
+    vec3 frag_position = get_view_position_from_depth(in_uv, sample_texture(daxa_push_constant.depth, in_uv).r);
 	vec3 normal = mat3x3(CAMERA.view_matrix) *  normalize(sample_texture(daxa_push_constant.normal, in_uv).rgb);
-    
 
-	// Get a random vector using a noise lookup
-	ivec2 texDim = texture_size(daxa_push_constant.normal, 0); 
-	ivec2 noiseDim = texture_size(daxa_push_constant.normal, 0);
-	const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) * in_uv;  
-	
-    
-    //vec3 randomVec = sample_texture(daxa_push_constant.ssao_noise, noiseUV).xyz * 2.0 - 1.0;
-    vec3 randomVec = normalize(vec3(
-        noise(in_uv, noiseDim.x * 2),
-        noise(pow(in_uv, vec2(1.1)), pow(noiseDim.x * 4.2, 1.5 + in_uv.x / 10.0)),
+	ivec2 tex_dim = texture_size(daxa_push_constant.normal, 0); 
+	ivec2 noise_dim = texture_size(daxa_push_constant.normal, 0);
+	const vec2 noise_uv = vec2(float(tex_dim.x)/float(noise_dim.x), float(tex_dim.y)/(noise_dim.y)) * in_uv;  
+
+    vec3 random_vec = normalize(vec3(
+        noise(in_uv, noise_dim.x * 2),
+        noise(pow(in_uv, vec2(1.1)), pow(noise_dim.x * 4.2, 1.5 + in_uv.x / 10.0)),
         0.0
     ));
-	
-	// Create TBN matrix
-	vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+
+	vec3 tangent = normalize(random_vec - normal * dot(random_vec, normal));
 	vec3 bitangent = cross(tangent, normal);
 	mat3 TBN = mat3(tangent, bitangent, normal);
 
-	// Calculate occlusion value
 	float occlusion = 0.0f;
-	// remove banding
 	const float bias = 0.025f;
-	for(int i = 0; i < 26; i++)
-	{		
-		vec3 samplePos = TBN * kernelSamples[i].xyz; 
-		samplePos = fragPos + samplePos * SSAO_RADIUS; 
+	for(int i = 0; i < KERNEL_SIZE; i++) {		
+		vec3 sample_pos = TBN * kernelSamples[i].xyz; 
+		sample_pos = frag_position + sample_pos * SSAO_RADIUS; 
 		
 		// project
-		vec4 offset = vec4(samplePos, 1.0f);
+		vec4 offset = vec4(sample_pos, 1.0f);
 		offset = CAMERA.projection_matrix * offset; 
 		offset.xy /= offset.w; 
 		offset.xy = offset.xy * 0.5f + 0.5f; 
 		
-		vec3 sampleDepthVector = get_view_position_from_depth(offset.xy, sample_texture(daxa_push_constant.depth, offset.xy).r);
-        float sampleDepth = sampleDepthVector.z;
+		vec3 sample_depth_v = get_view_position_from_depth(offset.xy, sample_texture(daxa_push_constant.depth, offset.xy).r);
+        float sample_depth = sample_depth_v.z;
 
-		float rangeCheck = smoothstep(0.0f, 1.0f, SSAO_RADIUS / abs(fragPos.z - sampleDepth));
-		occlusion += (sampleDepth >= samplePos.z + bias ? 1.0f : 0.0f) * rangeCheck;           
+		float range_check = smoothstep(0.0f, 1.0f, SSAO_RADIUS / abs(frag_position.z - sample_depth));
+		occlusion += (sample_depth >= sample_pos.z + bias ? 1.0f : 0.0f) * range_check;           
 	}
-	occlusion = 1.0 - (occlusion / float(26));
+	occlusion = 1.0 - (occlusion / float(KERNEL_SIZE));
 	
 	out_ssao = occlusion;
 }

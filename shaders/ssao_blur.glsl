@@ -1,18 +1,7 @@
-#define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
-#define DAXA_ENABLE_IMAGE_OVERLOADS_BASIC 1
 #include <shared.inl>
+#include "utils/core.glsl"
 
 DAXA_USE_PUSH_CONSTANT(SSAOBlurPush)
-
-#define VERTEX deref(daxa_push_constant.face_buffer[gl_VertexIndex])
-#define OBJECT deref(daxa_push_constant.object_buffer)
-#define CAMERA deref(daxa_push_constant.camera_buffer)
-#define MATERIAL deref(daxa_push_constant.material_info_buffer)
-#define LIGHTS deref(daxa_push_constant.lights_buffer)
-
-#define sample_texture(tex, uv) texture(tex.image_view_id, tex.sampler_id, uv)
-#define texture_size(tex, mip) textureSize(tex.image_view_id, tex.sampler_id, mip)
-
 
 #if defined(DRAW_VERT)
 
@@ -30,15 +19,13 @@ layout(location = 0) in f32vec2 in_uv;
 layout (location = 0) out f32 out_ssao;
 
 void main() {
-    const int blurRange = 2;
+    const int blur_range = 2;
 	int n = 0;
-	vec2 texelSize = 1.0 / vec2(texture_size(daxa_push_constant.ssao, 0));
+	vec2 texel_size = 1.0 / vec2(texture_size(daxa_push_constant.ssao, 0));
 	float result = 0.0;
-	for (int x = -blurRange; x < blurRange; x++) 
-	{
-		for (int y = -blurRange; y < blurRange; y++) 
-		{
-			vec2 offset = vec2(float(x), float(y)) * texelSize;
+	for (int x = -blur_range; x < blur_range; x++) {
+		for (int y = -blur_range; y < blur_range; y++) {
+			vec2 offset = vec2(float(x), float(y)) * texel_size;
 			result += sample_texture(daxa_push_constant.ssao, in_uv + offset).r;
 			n++;
 		}
