@@ -75,5 +75,24 @@ struct DrawPush {
     daxa_RWBufferPtr(LightsInfo) lights_buffer;
     daxa_RWBufferPtr(CameraInfo) camera_buffer;
     daxa_RWBufferPtr(ObjectInfo) object_buffer;
+};
 
+struct CompositionPush {
+    TextureId albedo;
+    TextureId normal;
+    TextureId position;
+    TextureId depth;
+    TextureId ssao;
+    daxa_RWBufferPtr(LightsInfo) lights_buffer;
+    daxa_RWBufferPtr(CameraInfo) camera_buffer;
+};
+
+struct SSAOGenerationPush {
+    TextureId normal;
+    TextureId depth;
+    daxa_RWBufferPtr(CameraInfo) camera_buffer;
+};
+
+struct SSAOBlurPush {
+    TextureId ssao;
 };

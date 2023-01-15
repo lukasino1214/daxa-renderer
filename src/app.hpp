@@ -49,11 +49,23 @@ struct App : AppWindow<App> {
 
     ControlledCamera3D camera;
 
-    std::shared_ptr<daxa::RasterPipeline> raster_pipeline;
+    std::shared_ptr<daxa::RasterPipeline> deffered_pipeline;
+    std::shared_ptr<daxa::RasterPipeline> composition_pipeline;
+    std::shared_ptr<daxa::RasterPipeline> ssao_generation_pipeline;
+    std::shared_ptr<daxa::RasterPipeline> ssao_blur_pipeline;
+
     daxa::ImageId depth_image;
     daxa::ImageId albedo_image;
     daxa::ImageId normal_image;
     daxa::ImageId position_image;
+
+    daxa::ImageId ssao_image;
+    daxa::ImageId ssao_blur_image;
+
+    daxa::SamplerId sampler;
+
+    u32 half_size_x = size_x / 2;
+    u32 half_size_y = size_y / 2;
 
     std::unique_ptr<Buffer<CameraInfo>> camera_buffer;
     std::shared_ptr<SceneHiearchyPanel> scene_hiearchy;

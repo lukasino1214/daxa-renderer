@@ -44,29 +44,44 @@ App::App() : AppWindow<App>("poggers")  {
         .debug_name = "pipeline_manager",
     });
 
-    this->raster_pipeline = pipeline_manager.add_raster_pipeline({
-        .vertex_shader_info = {.source = daxa::ShaderFile{"draw.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
-        .fragment_shader_info = {.source = daxa::ShaderFile{"draw.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
+    this->deffered_pipeline = pipeline_manager.add_raster_pipeline({
+        .vertex_shader_info = {.source = daxa::ShaderFile{"deffered.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
+        .fragment_shader_info = {.source = daxa::ShaderFile{"deffered.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
         .color_attachments = {
             { .format = swapchain.get_format() },
+            { .format = daxa::Format::R16G16B16A16_SFLOAT },
+            { .format = daxa::Format::R16G16B16A16_SFLOAT },
         },
         .depth_test = {
-            .depth_attachment_format = daxa::Format::D24_UNORM_S8_UINT,
+            .depth_attachment_format = daxa::Format::D32_SFLOAT,
             .enable_depth_test = true,
             .enable_depth_write = true,
         },
         .raster = {
-            .face_culling = daxa::FaceCullFlagBits::FRONT_BIT
+            .face_culling = daxa::FaceCullFlagBits::NONE
         },
-        .push_constant_size = sizeof(DrawPush),
+        .push_constant_size = sizeof(CompositionPush),
+        .debug_name = "raster_pipeline",
+    }).value();
+
+    this->composition_pipeline = pipeline_manager.add_raster_pipeline({
+        .vertex_shader_info = {.source = daxa::ShaderFile{"composition.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
+        .fragment_shader_info = {.source = daxa::ShaderFile{"composition.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
+        .color_attachments = {
+            { .format = swapchain.get_format() },
+        },
+        .raster = {
+            .face_culling = daxa::FaceCullFlagBits::NONE
+        },
+        .push_constant_size = sizeof(CompositionPush),
         .debug_name = "raster_pipeline",
     }).value();
 
     this->depth_image = device.create_image({
-        .format = daxa::Format::D24_UNORM_S8_UINT,
-        .aspect = daxa::ImageAspectFlagBits::DEPTH | daxa::ImageAspectFlagBits::STENCIL,
+        .format = daxa::Format::D32_SFLOAT,
+        .aspect = daxa::ImageAspectFlagBits::DEPTH,
         .size = {size_x, size_y, 1},
-        .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT,
+        .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
     });
 
     this->albedo_image = device.create_image({
@@ -90,6 +105,79 @@ App::App() : AppWindow<App>("poggers")  {
         .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
     });
 
+    this->ssao_image = this->device.create_image({
+        .format = daxa::Format::R8_UNORM,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = { half_size_x, half_size_y, 1 },
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+    });
+
+    this->ssao_blur_image = this->device.create_image({
+        .format = daxa::Format::R8_UNORM,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = { half_size_x, half_size_y, 1 },
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+    });
+
+    this->sampler = this->device.create_sampler({
+        .magnification_filter = daxa::Filter::LINEAR,
+        .minification_filter = daxa::Filter::LINEAR,
+        .mipmap_filter = daxa::Filter::LINEAR,
+        .address_mode_u = daxa::SamplerAddressMode::REPEAT,
+        .address_mode_v = daxa::SamplerAddressMode::REPEAT,
+        .address_mode_w = daxa::SamplerAddressMode::REPEAT,
+        .mip_lod_bias = 0.0f,
+        .enable_anisotropy = true,
+        .max_anisotropy = 16.0f,
+        .enable_compare = false,
+        .compare_op = daxa::CompareOp::ALWAYS,
+        .min_lod = 0.0f,
+        .max_lod = static_cast<f32>(1),
+        .enable_unnormalized_coordinates = false,
+    });
+
+    this->ssao_generation_pipeline = pipeline_manager.add_raster_pipeline({
+        .vertex_shader_info = {
+            .source = daxa::ShaderFile{"ssao_generation.glsl"}, 
+            .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_VERT"} } }
+        },
+        .fragment_shader_info = {
+            .source = daxa::ShaderFile{"ssao_generation.glsl"},
+            .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_FRAG"} } }
+        },
+        .color_attachments = {
+            {
+                .format = daxa::Format::R8_UNORM, 
+            }
+        },
+        .raster = {
+            .polygon_mode = daxa::PolygonMode::FILL,
+        },
+        .push_constant_size = sizeof(SSAOGenerationPush),
+        .debug_name = "ssao_generation_code",
+    }).value();
+
+    this->ssao_blur_pipeline = pipeline_manager.add_raster_pipeline({
+        .vertex_shader_info = {
+            .source = daxa::ShaderFile{"ssao_blur.glsl"},
+            .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_VERT"} } }
+        },
+        .fragment_shader_info = {
+            .source = daxa::ShaderFile{"ssao_blur.glsl"},
+            .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_FRAG"} } }
+        },
+        .color_attachments = {
+            {
+                .format = daxa::Format::R8_UNORM, 
+            }
+        },
+        .raster = {
+            .polygon_mode = daxa::PolygonMode::FILL,
+        },
+        .push_constant_size = sizeof(SSAOBlurPush),
+        .debug_name = "ssao_blur_pipeline",
+    }).value();
+
     ImGui::CreateContext();
     ImGui_ImplGlfw_InitForVulkan(glfw_window_ptr, true);
     imgui_renderer =  daxa::ImGuiRenderer({
@@ -111,6 +199,9 @@ App::~App() {
     device.destroy_image(albedo_image);
     device.destroy_image(normal_image);
     device.destroy_image(position_image);
+    device.destroy_image(ssao_image);
+    device.destroy_image(ssao_blur_image);
+    device.destroy_sampler(sampler);
     ImGui_ImplGlfw_Shutdown();
 }
 
@@ -200,17 +291,50 @@ void App::render() {
     cmd_list.pipeline_barrier_image_transition({
         .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
         .before_layout = daxa::ImageLayout::UNDEFINED,
-        .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
-        .image_slice = {.image_aspect = daxa::ImageAspectFlagBits::DEPTH | daxa::ImageAspectFlagBits::STENCIL},
+        .after_layout = daxa::ImageLayout::GENERAL,
+        .image_slice = {.image_aspect = daxa::ImageAspectFlagBits::DEPTH },
         .image_id = depth_image,
     });
 
+    cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+        .before_layout = daxa::ImageLayout::UNDEFINED,
+        .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+        .image_id = albedo_image
+    });
+
+    cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+        .before_layout = daxa::ImageLayout::UNDEFINED,
+        .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+        .image_id = normal_image
+    });
+
+    cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+        .before_layout = daxa::ImageLayout::UNDEFINED,
+        .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+        .image_id = position_image
+    });
+
     cmd_list.begin_renderpass({
-        .color_attachments = {{
-            .image_view = swapchain_image.default_view(),
-            .load_op = daxa::AttachmentLoadOp::CLEAR,
-            .clear_value = std::array<daxa::f32, 4>{0.2f, 0.4f, 1.0f, 1.0f},
-        }},
+        .color_attachments = {
+            {
+                .image_view = this->albedo_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
+            },
+            {
+                .image_view = this->normal_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
+            },
+            {
+                .image_view = this->position_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
+            },
+        },
         .depth_attachment = {{
             .image_view = depth_image.default_view(),
             .load_op = daxa::AttachmentLoadOp::CLEAR,
@@ -218,7 +342,7 @@ void App::render() {
         }},
         .render_area = {.x = 0, .y = 0, .width = size_x, .height = size_y},
     });
-    cmd_list.set_pipeline(*raster_pipeline);
+    cmd_list.set_pipeline(*deffered_pipeline);
 
     DrawPush push;
     push.lights_buffer = scene->lights_buffer->buffer_address;
@@ -234,6 +358,69 @@ void App::render() {
             model->draw(cmd_list, push);
         }
     });
+
+    cmd_list.end_renderpass();
+
+    // SSAO generation
+    cmd_list.begin_renderpass({
+        .color_attachments = {
+            {
+                .image_view = this->ssao_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{1.0f, 0.0f, 0.0f, 1.0f},
+            },
+        },
+        .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(half_size_x), .height = static_cast<u32>(half_size_y)},
+    });
+    cmd_list.set_pipeline(*ssao_generation_pipeline);
+    cmd_list.push_constant(SSAOGenerationPush {
+        .normal = { .image_view_id = normal_image.default_view(), .sampler_id = sampler },
+        .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
+        .camera_buffer = camera_buffer->buffer_address
+    });
+    cmd_list.draw({ .vertex_count = 3 });
+    cmd_list.end_renderpass();
+// SSAO blur
+    cmd_list.begin_renderpass({
+        .color_attachments = {
+            {
+                .image_view = this->ssao_blur_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
+            },
+        },
+        .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(half_size_x), .height = static_cast<u32>(half_size_y)},
+    });
+    cmd_list.set_pipeline(*ssao_blur_pipeline);
+    cmd_list.push_constant(SSAOBlurPush {
+        .ssao = { .image_view_id = ssao_image.default_view(), .sampler_id = sampler },
+    });
+    cmd_list.draw({ .vertex_count = 3 });
+    cmd_list.end_renderpass();
+
+    cmd_list.begin_renderpass({
+        .color_attachments = {
+            {
+                .image_view = swapchain_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
+            },
+        },
+        .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(size_x), .height = static_cast<u32>(size_y)},
+    });
+
+    cmd_list.set_pipeline(*composition_pipeline);
+
+    cmd_list.push_constant(CompositionPush {
+        .albedo = { .image_view_id = albedo_image.default_view(), .sampler_id = sampler },
+        .normal = { .image_view_id = normal_image.default_view(), .sampler_id = sampler },
+        .position = { .image_view_id = position_image.default_view(), .sampler_id = sampler },
+        .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
+        .ssao = { .image_view_id = ssao_blur_image.default_view(), .sampler_id = sampler },
+        .lights_buffer = scene->lights_buffer->buffer_address,
+        .camera_buffer = camera_buffer->buffer_address,
+    });
+    cmd_list.draw({ .vertex_count = 3 });
 
     cmd_list.end_renderpass();
 
@@ -296,13 +483,15 @@ void App::on_resize(u32 sx, u32 sy) {
         swapchain.resize();
         size_x = swapchain.get_surface_extent().x;
         size_y = swapchain.get_surface_extent().y;
+        half_size_x = size_x / 2;
+        half_size_y = size_y / 2;
         camera.camera.resize(size_x, size_y);
         device.destroy_image(depth_image);
         depth_image = device.create_image({
-            .format = daxa::Format::D24_UNORM_S8_UINT,
-            .aspect = daxa::ImageAspectFlagBits::DEPTH | daxa::ImageAspectFlagBits::STENCIL,
+            .format = daxa::Format::D32_SFLOAT,
+            .aspect = daxa::ImageAspectFlagBits::DEPTH,
             .size = {size_x, size_y, 1},
-            .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT,
+            .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
         });
         device.destroy_image(albedo_image);
         this->albedo_image = device.create_image({
@@ -323,6 +512,22 @@ void App::on_resize(u32 sx, u32 sy) {
             .format = daxa::Format::R16G16B16A16_SFLOAT,
             .aspect = daxa::ImageAspectFlagBits::COLOR,
             .size = {size_x, size_y, 1},
+            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        });
+
+        device.destroy_image(ssao_image);
+        this->ssao_image = this->device.create_image({
+            .format = daxa::Format::R8_UNORM,
+            .aspect = daxa::ImageAspectFlagBits::COLOR,
+            .size = { half_size_x, half_size_y, 1 },
+            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        });
+
+        device.destroy_image(ssao_blur_image);
+        this->ssao_blur_image = this->device.create_image({
+            .format = daxa::Format::R8_UNORM,
+            .aspect = daxa::ImageAspectFlagBits::COLOR,
+            .size = { half_size_x, half_size_y, 1 },
             .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
         });
 
