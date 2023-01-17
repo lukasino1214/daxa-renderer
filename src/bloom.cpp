@@ -81,6 +81,20 @@ void BloomRenderer::render_downsamples(daxa::CommandList& cmd_list, daxa::ImageI
     }
     */
 
+   cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+        .before_layout = daxa::ImageLayout::UNDEFINED,
+        .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+        .image_id = bloom_mips->mip_chain[0]->texture
+    });
+
+    cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::READ,
+        .before_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+        .after_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+        .image_id = src_image
+    });
+
     cmd_list.begin_renderpass({
         .color_attachments = {
             {
@@ -101,6 +115,20 @@ void BloomRenderer::render_downsamples(daxa::CommandList& cmd_list, daxa::ImageI
     cmd_list.end_renderpass();
 
     for(u32 i = 0; i < bloom_mips->mip_chain.size() - 1; i++) {
+        cmd_list.pipeline_barrier_image_transition({
+            .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+            .before_layout = daxa::ImageLayout::UNDEFINED,
+            .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+            .image_id = bloom_mips->mip_chain[i+1]->texture
+        });
+
+        cmd_list.pipeline_barrier_image_transition({
+            .waiting_pipeline_access = daxa::AccessConsts::READ,
+            .before_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+            .after_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+            .image_id = bloom_mips->mip_chain[i]->texture
+        });
+
         cmd_list.begin_renderpass({
             .color_attachments = {
                 {
@@ -138,6 +166,20 @@ void BloomRenderer::render_upsamples(daxa::CommandList& cmd_list, daxa::ImageId&
     */
 
     for(u32 i = bloom_mips->mip_chain.size() - 1; i > 0; i--) {
+        cmd_list.pipeline_barrier_image_transition({
+            .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+            .before_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+            .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+            .image_id = bloom_mips->mip_chain[i-1]->texture
+        });
+
+        cmd_list.pipeline_barrier_image_transition({
+            .waiting_pipeline_access = daxa::AccessConsts::READ,
+            .before_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+            .after_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+            .image_id = bloom_mips->mip_chain[i]->texture
+        });
+
         cmd_list.begin_renderpass({
             .color_attachments = {
                 {
@@ -158,6 +200,20 @@ void BloomRenderer::render_upsamples(daxa::CommandList& cmd_list, daxa::ImageId&
         cmd_list.end_renderpass();
     }
 
+    cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+        .before_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+        .after_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+        .image_id = src_image
+    });
+
+    cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::READ,
+        .before_layout = daxa::ImageLayout::ATTACHMENT_OPTIMAL,
+        .after_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+        .image_id = bloom_mips->mip_chain[0]->texture
+    });
+
     cmd_list.begin_renderpass({
         .color_attachments = {
             {
@@ -172,7 +228,7 @@ void BloomRenderer::render_upsamples(daxa::CommandList& cmd_list, daxa::ImageId&
     cmd_list.push_constant(BloomPush {
         .src_texture = { .image_view_id = bloom_mips->mip_chain[0]->texture.default_view(), .sampler_id = sampler },
         .src_resolution = { static_cast<f32>(bloom_mips->mip_chain[0]->int_size.x), static_cast<f32>(bloom_mips->mip_chain[0]->int_size.y) },
-        .filter_radius = 0.005f
+        .filter_radius = 0.05f
     });
     cmd_list.draw({ .vertex_count = 3 });
     cmd_list.end_renderpass();
