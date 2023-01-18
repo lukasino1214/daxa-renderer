@@ -22,21 +22,17 @@ add_executable(${PROJECT_NAME}
     "src/graphics/texture.cpp" 
     "src/graphics/model.cpp" 
     "src/graphics/camera.cpp"
-    "src/data/scene.hpp"
     "src/data/scene.cpp"
-    "src/data/scene_serializer.hpp"
     "src/data/scene_serializer.cpp"
     "src/data/entity.hpp"
     "src/data/entity.cpp"
-    "src/data/UUID.hpp"
     "src/data/UUID.cpp"
     "src/data/components.hpp"
-    "src/panels/scene_hiearchy.hpp"    
     "src/panels/scene_hiearchy.cpp"
-    "src/panels/viewport_panel.hpp"    
     "src/panels/viewport_panel.cpp"
-    "src/bloom.hpp"
     "src/bloom.cpp"
+    "src/new_model.cpp"
+    "src/new_model.hpp"
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw stb_interface fastgltf::fastgltf yaml-cpp EnTT::EnTT imgui::imgui)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

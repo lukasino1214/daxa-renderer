@@ -9,6 +9,8 @@
 #include "data/components.hpp"
 #include "data/scene_serializer.hpp"
 
+#include "new_model.hpp"
+
 #include <thread>
 
 App::App() : AppWindow<App>("poggers")  {
@@ -184,7 +186,9 @@ App::App() : AppWindow<App>("poggers")  {
         .device = device,
         .format = swapchain.get_format(),
     });
-    //BloomFBO(device, {size_x, size_y}, 6);
+    
+    NewModel p(device, "assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf");
+    throw std::runtime_error("end");
 
     bloom_renderer = std::make_unique<BloomRenderer>(pipeline_manager, device, glm::ivec2{size_x, size_y});
 
@@ -546,6 +550,8 @@ void App::on_resize(u32 sx, u32 sy) {
             .size = { half_size_x, half_size_y, 1 },
             .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
         });
+
+        bloom_renderer->resize({size_x, size_y});
 
         on_update();
     }
