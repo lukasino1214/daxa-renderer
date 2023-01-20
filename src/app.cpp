@@ -9,8 +9,6 @@
 #include "data/components.hpp"
 #include "data/scene_serializer.hpp"
 
-#include "new_model.hpp"
-
 #include <thread>
 
 App::App() : AppWindow<App>("poggers")  {
@@ -186,9 +184,6 @@ App::App() : AppWindow<App>("poggers")  {
         .device = device,
         .format = swapchain.get_format(),
     });
-    
-    NewModel p(device, "assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf");
-    throw std::runtime_error("end");
 
     bloom_renderer = std::make_unique<BloomRenderer>(pipeline_manager, device, glm::ivec2{size_x, size_y});
 

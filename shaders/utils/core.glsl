@@ -10,4 +10,4 @@
 #define LIGHTS deref(daxa_push_constant.lights_buffer)
 
 #define sample_texture(tex, uv) texture(tex.image_view_id, tex.sampler_id, uv)
-#define texture_size(tex, mip) textureSize(tex.image_view_id, tex.sampler_id, mip)
+#define texture_size(tex, mip) textureSize(tex.image_view_id, mip)

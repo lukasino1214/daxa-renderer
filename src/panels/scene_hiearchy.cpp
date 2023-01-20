@@ -1,6 +1,7 @@
 #include "scene_hiearchy.hpp"
 
 #include <imgui.h>
+#include <iostream>
 
 namespace dare {
     SceneHiearchyPanel::SceneHiearchyPanel(std::shared_ptr<Scene> scene) : scene{scene} {

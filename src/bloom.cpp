@@ -1,5 +1,6 @@
 #include "bloom.hpp"
 #include "../shaders/shared.inl"
+#include <iostream>
 
 BloomRenderer::BloomRenderer(daxa::PipelineManager& pipeline_manager, daxa::Device device, const glm::ivec2& window_size) : device{device}, window_size{window_size} {
     down_sample_pipeline = pipeline_manager.add_raster_pipeline({

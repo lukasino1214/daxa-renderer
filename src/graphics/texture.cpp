@@ -6,12 +6,12 @@
 #include <cmath>
 
 namespace dare {
-    Texture::Texture(daxa::Device device, u32 size_x, u32 size_y, unsigned char* data, TextureType type) : device{device} {
+    Texture::Texture(daxa::Device device, u32 size_x, u32 size_y, unsigned char* data, Type type) : device{device} {
         u32 mip_levels = static_cast<uint32_t>(std::floor(std::log2(std::max(size_x, size_y)))) + 1;
 
         this->image_id = device.create_image({
             .dimensions = 2,
-            .format = (type == TextureType::UNORM) ? daxa::Format::R8G8B8A8_UNORM : daxa::Format::R8G8B8A8_SRGB,
+            .format = (type == Type::UNORM) ? daxa::Format::R8G8B8A8_UNORM : daxa::Format::R8G8B8A8_SRGB,
             .aspect = daxa::ImageAspectFlagBits::COLOR,
             .size = { static_cast<u32>(size_x), static_cast<u32>(size_y), 1 },
             .mip_level_count = mip_levels,

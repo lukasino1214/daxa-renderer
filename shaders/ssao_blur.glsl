@@ -30,7 +30,7 @@ void main() {
 			n++;
 		}
 	}
-	out_ssao = result / (float(n));
+	out_ssao = pow(result / (float(n)), 4);
 }
 
 #endif

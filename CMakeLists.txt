@@ -2,13 +2,15 @@ cmake_minimum_required(VERSION 3.12)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(daxa-renderer)
+include(FetchContent)
+
+FetchContent_Declare(fastgltf GIT_REPOSITORY https://github.com/spnda/fastgltf.git GIT_TAG f6bb20b14906c013942f5c0c9b3bafa568f6d22d)
+FetchContent_MakeAvailable(fastgltf)
 
 find_package(daxa CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-find_package(fastgltf CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
-find_package(simdjson CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
@@ -31,10 +33,8 @@ add_executable(${PROJECT_NAME}
     "src/panels/scene_hiearchy.cpp"
     "src/panels/viewport_panel.cpp"
     "src/bloom.cpp"
-    "src/new_model.cpp"
-    "src/new_model.hpp"
 )
-target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw stb_interface fastgltf::fastgltf yaml-cpp EnTT::EnTT imgui::imgui)
+target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw stb_interface fastgltf yaml-cpp EnTT::EnTT imgui::imgui)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:${PROJECT_NAME}>/../vcpkg_installed/x64-$<LOWER_CASE:$<PLATFORM_ID>>/include")

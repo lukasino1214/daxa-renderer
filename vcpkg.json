@@ -30,8 +30,7 @@
         "tinygltf",
         "entt",
         "yaml-cpp",
-        "meshoptimizer",
-        "fastgltf"
+        "meshoptimizer"
     ],
     "builtin-baseline": "85c4f11f8d635c408ba63062fd261c14678c0132",
     "overrides": [

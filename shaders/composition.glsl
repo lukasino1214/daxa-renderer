@@ -25,7 +25,7 @@ void main() {
     f32vec4 color = sample_texture(daxa_push_constant.albedo, in_uv);
     f32vec4 normal = sample_texture(daxa_push_constant.normal, in_uv);
 
-    vec3 ambient = vec3(0.05, 0.05, 0.05);
+    vec3 ambient = vec3(0.75, 0.75, 0.75);
     
     ambient *= sample_texture(daxa_push_constant.ssao, in_uv).r;
 
@@ -49,7 +49,7 @@ void main() {
 
     f32vec3 bloom = sample_texture(daxa_push_constant.emissive, in_uv).rgb;
 
-    ambient += bloom;
+    ambient += bloom * 8;
 
     out_color = f32vec4(ambient, 1.0);
 }
