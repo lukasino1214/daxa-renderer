@@ -36,20 +36,20 @@ void main() {
     f32vec3 camera_position = CAMERA.inverse_view_matrix[3].xyz;
 
     for(uint i = 0; i < LIGHTS.num_directional_lights; i++) {
-        ambient += calculate_directional_light(LIGHTS.directional_lights[i], color.rgb, normal.xyz, position.xyz, camera_position);
+        ambient += calculate_directional_light(LIGHTS.directional_lights[i], ambient.rgb, normal.xyz, position.xyz, camera_position);
     }
 
     for(uint i = 0; i < LIGHTS.num_point_lights; i++) {
-        ambient += calculate_point_light(LIGHTS.point_lights[i], color.rgb, normal.xyz, position.xyz, camera_position);
+        ambient += calculate_point_light(LIGHTS.point_lights[i], ambient.rgb, normal.xyz, position.xyz, camera_position);
     }
 
     for(uint i = 0; i < LIGHTS.num_spot_lights; i++) {
-        ambient += calculate_spot_light(LIGHTS.spot_lights[i], color.rgb, normal.xyz, position.xyz, camera_position);
+        ambient += calculate_spot_light(LIGHTS.spot_lights[i], ambient.rgb, normal.xyz, position.xyz, camera_position);
     }
 
     f32vec3 bloom = sample_texture(daxa_push_constant.emissive, in_uv).rgb;
 
-    ambient += bloom * 8;
+    ambient += bloom * 2;
 
     out_color = f32vec4(ambient, 1.0);
 }

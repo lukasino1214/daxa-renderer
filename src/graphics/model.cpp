@@ -1,10 +1,8 @@
 #include "model.hpp"
 
-#define TINYGLTF_IMPLEMENTATION
+
 #define STB_IMAGE_IMPLEMENTATION
-#define TINYGLTF_NO_STB_IMAGE_WRITE
-#define STBI_MSC_SECURE_CRT
-#include <tiny_gltf.h>
+#include <stb_image.h>
 #include <iostream>
 
 #include <glm/gtc/type_ptr.hpp>
@@ -12,6 +10,8 @@
 #include <cassert>
 #include <fastgltf_types.hpp>
 #include <fastgltf_parser.hpp>
+
+//#include "../utils/threadpool.hpp"
 
 namespace dare {
     Model::Model(daxa::Device device, const std::string& path) : device{device}, path{path} {
@@ -65,8 +65,10 @@ namespace dare {
             return Texture::Type::UNORM;
         };
 
-        for (u32 i = 0; i < asset->images.size(); i++) {
-            auto& image = asset->images[i];
+        images.resize(asset->images.size());
+        //ThreadPool pool(std::thread::hardware_concurrency() - 1);
+
+        auto process_image = [&](fastgltf::Image& image, u32 index) {
             std::unique_ptr<Texture> tex;
             switch (image.location) {
                 case fastgltf::DataLocation::FilePathWithByteRange: {
@@ -99,12 +101,12 @@ namespace dare {
                             rgb += 3;
                         }
 
-                        tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(i));
+                        tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
                     }
                     else {
                         buffer = data;
                         buffer_size = width * height * 4;
-                        tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(i));
+                        tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
                     }
 
                     stbi_image_free(data);
@@ -144,7 +146,7 @@ namespace dare {
                                 buffer_size = width * height * 4;
                             }
 
-                            tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(i));
+                            tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
                             stbi_image_free(data);
                             break;
                         }
@@ -155,8 +157,16 @@ namespace dare {
                     break;
                 }
             }
-            images.push_back(std::move(tex));
+            images[index] = std::move(tex);
+        };
+
+        for (u32 i = 0; i < asset->images.size(); i++) {
+            auto& image = asset->images[i];
+            process_image(image, i);
+            //pool.push_task(process_image, image, i);
         }
+
+        //pool.wait_for_tasks();
 
         default_texture = std::make_unique<Texture>(device, "assets/textures/white.png");
 

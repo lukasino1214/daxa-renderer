@@ -20,7 +20,8 @@ using Clock = std::chrono::high_resolution_clock;
 #include "panels/scene_hiearchy.hpp"
 using namespace dare;
 
-#include "bloom.hpp"
+#include "rendering/bloom_renderer.hpp"
+#include "rendering/ssao_renderer.hpp"
 
 struct App : AppWindow<App> {
     App();
@@ -53,16 +54,11 @@ struct App : AppWindow<App> {
 
     std::shared_ptr<daxa::RasterPipeline> deffered_pipeline;
     std::shared_ptr<daxa::RasterPipeline> composition_pipeline;
-    std::shared_ptr<daxa::RasterPipeline> ssao_generation_pipeline;
-    std::shared_ptr<daxa::RasterPipeline> ssao_blur_pipeline;
 
     daxa::ImageId depth_image;
     daxa::ImageId albedo_image;
     daxa::ImageId normal_image;
     daxa::ImageId emissive_image;
-
-    daxa::ImageId ssao_image;
-    daxa::ImageId ssao_blur_image;
 
     daxa::SamplerId sampler;
 
@@ -73,6 +69,7 @@ struct App : AppWindow<App> {
     std::shared_ptr<SceneHiearchyPanel> scene_hiearchy;
 
     std::unique_ptr<BloomRenderer> bloom_renderer;
+    std::unique_ptr<SSAORenderer> ssao_renderer;
 
     std::shared_ptr<Scene> scene;
 };

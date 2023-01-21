@@ -105,27 +105,13 @@ App::App() : AppWindow<App>("poggers")  {
         .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
     });
 
-    this->ssao_image = this->device.create_image({
-        .format = daxa::Format::R8_UNORM,
-        .aspect = daxa::ImageAspectFlagBits::COLOR,
-        .size = { half_size_x, half_size_y, 1 },
-        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-    });
-
-    this->ssao_blur_image = this->device.create_image({
-        .format = daxa::Format::R8_UNORM,
-        .aspect = daxa::ImageAspectFlagBits::COLOR,
-        .size = { half_size_x, half_size_y, 1 },
-        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-    });
-
     this->sampler = this->device.create_sampler({
         .magnification_filter = daxa::Filter::LINEAR,
         .minification_filter = daxa::Filter::LINEAR,
         .mipmap_filter = daxa::Filter::LINEAR,
-        .address_mode_u = daxa::SamplerAddressMode::REPEAT,
-        .address_mode_v = daxa::SamplerAddressMode::REPEAT,
-        .address_mode_w = daxa::SamplerAddressMode::REPEAT,
+        .address_mode_u = daxa::SamplerAddressMode::CLAMP_TO_EDGE,
+        .address_mode_v = daxa::SamplerAddressMode::CLAMP_TO_EDGE,
+        .address_mode_w = daxa::SamplerAddressMode::CLAMP_TO_EDGE,
         .mip_lod_bias = 0.0f,
         .enable_anisotropy = true,
         .max_anisotropy = 16.0f,
@@ -136,48 +122,6 @@ App::App() : AppWindow<App>("poggers")  {
         .enable_unnormalized_coordinates = false,
     });
 
-    this->ssao_generation_pipeline = pipeline_manager.add_raster_pipeline({
-        .vertex_shader_info = {
-            .source = daxa::ShaderFile{"ssao_generation.glsl"}, 
-            .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_VERT"} } }
-        },
-        .fragment_shader_info = {
-            .source = daxa::ShaderFile{"ssao_generation.glsl"},
-            .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_FRAG"} } }
-        },
-        .color_attachments = {
-            {
-                .format = daxa::Format::R8_UNORM, 
-            }
-        },
-        .raster = {
-            .polygon_mode = daxa::PolygonMode::FILL,
-        },
-        .push_constant_size = sizeof(SSAOGenerationPush),
-        .debug_name = "ssao_generation_code",
-    }).value();
-
-    this->ssao_blur_pipeline = pipeline_manager.add_raster_pipeline({
-        .vertex_shader_info = {
-            .source = daxa::ShaderFile{"ssao_blur.glsl"},
-            .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_VERT"} } }
-        },
-        .fragment_shader_info = {
-            .source = daxa::ShaderFile{"ssao_blur.glsl"},
-            .compile_options = { .defines = { daxa::ShaderDefine{"DRAW_FRAG"} } }
-        },
-        .color_attachments = {
-            {
-                .format = daxa::Format::R8_UNORM, 
-            }
-        },
-        .raster = {
-            .polygon_mode = daxa::PolygonMode::FILL,
-        },
-        .push_constant_size = sizeof(SSAOBlurPush),
-        .debug_name = "ssao_blur_pipeline",
-    }).value();
-
     ImGui::CreateContext();
     ImGui_ImplGlfw_InitForVulkan(glfw_window_ptr, true);
     imgui_renderer =  daxa::ImGuiRenderer({
@@ -186,14 +130,15 @@ App::App() : AppWindow<App>("poggers")  {
     });
 
     bloom_renderer = std::make_unique<BloomRenderer>(pipeline_manager, device, glm::ivec2{size_x, size_y});
+    ssao_renderer = std::make_unique<SSAORenderer>(pipeline_manager, device, glm::ivec2{half_size_x, half_size_y});
 
     this->scene = SceneSerializer::deserialize(this->device, "test.scene");
-    //this->scene = std::make_shared<Scene>(device);
     this->scene_hiearchy = std::make_shared<SceneHiearchyPanel>(this->scene);
-    camera_buffer = std::make_unique<Buffer<CameraInfo>>(this->device);
 
+    camera_buffer = std::make_unique<Buffer<CameraInfo>>(this->device);
     camera.camera.resize(size_x, size_y);
 
+    // entity helmet
     Entity entity = scene->create_entity("helment");
     auto model = std::make_shared<Model>(device, "assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf");
     entity.add_component<ModelComponent>(model);
@@ -202,7 +147,6 @@ App::App() : AppWindow<App>("poggers")  {
     comp.translation = {0.0f, 3.0f, 0.0f};
     comp.rotation = {0.0f, 0.0f, 0.0f};
     comp.scale = {1.0f, 1.0f, 1.0f};
-
 }
 
 App::~App() {
@@ -212,8 +156,6 @@ App::~App() {
     device.destroy_image(albedo_image);
     device.destroy_image(normal_image);
     device.destroy_image(emissive_image);
-    device.destroy_image(ssao_image);
-    device.destroy_image(ssao_blur_image);
     device.destroy_sampler(sampler);
     ImGui_ImplGlfw_Shutdown();
 }
@@ -374,43 +316,7 @@ void App::render() {
 
     cmd_list.end_renderpass();
 
-    // SSAO generation
-    cmd_list.begin_renderpass({
-        .color_attachments = {
-            {
-                .image_view = this->ssao_image.default_view(),
-                .load_op = daxa::AttachmentLoadOp::CLEAR,
-                .clear_value = std::array<f32, 4>{1.0f, 0.0f, 0.0f, 1.0f},
-            },
-        },
-        .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(half_size_x), .height = static_cast<u32>(half_size_y)},
-    });
-    cmd_list.set_pipeline(*ssao_generation_pipeline);
-    cmd_list.push_constant(SSAOGenerationPush {
-        .normal = { .image_view_id = normal_image.default_view(), .sampler_id = sampler },
-        .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
-        .camera_buffer = camera_buffer->buffer_address
-    });
-    cmd_list.draw({ .vertex_count = 3 });
-    cmd_list.end_renderpass();
-// SSAO blur
-    cmd_list.begin_renderpass({
-        .color_attachments = {
-            {
-                .image_view = this->ssao_blur_image.default_view(),
-                .load_op = daxa::AttachmentLoadOp::CLEAR,
-                .clear_value = std::array<f32, 4>{0.0f, 0.0f, 0.0f, 1.0f},
-            },
-        },
-        .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(half_size_x), .height = static_cast<u32>(half_size_y)},
-    });
-    cmd_list.set_pipeline(*ssao_blur_pipeline);
-    cmd_list.push_constant(SSAOBlurPush {
-        .ssao = { .image_view_id = ssao_image.default_view(), .sampler_id = sampler },
-    });
-    cmd_list.draw({ .vertex_count = 3 });
-    cmd_list.end_renderpass();
-
+    ssao_renderer->render(cmd_list, normal_image, depth_image, camera_buffer->buffer_address, sampler);
     bloom_renderer->render(cmd_list, emissive_image, sampler);
 
     cmd_list.begin_renderpass({
@@ -431,10 +337,11 @@ void App::render() {
         .normal = { .image_view_id = normal_image.default_view(), .sampler_id = sampler },
         .emissive = { .image_view_id = emissive_image.default_view(), .sampler_id = sampler },
         .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
-        .ssao = { .image_view_id = ssao_blur_image.default_view(), .sampler_id = sampler },
+        .ssao = { .image_view_id = ssao_renderer->ssao_blur_image.default_view(), .sampler_id = sampler },
         .lights_buffer = scene->lights_buffer->buffer_address,
         .camera_buffer = camera_buffer->buffer_address,
     });
+    
     cmd_list.draw({ .vertex_count = 3 });
 
     cmd_list.end_renderpass();
@@ -530,23 +437,8 @@ void App::on_resize(u32 sx, u32 sy) {
             .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
         });
 
-        device.destroy_image(ssao_image);
-        this->ssao_image = this->device.create_image({
-            .format = daxa::Format::R8_UNORM,
-            .aspect = daxa::ImageAspectFlagBits::COLOR,
-            .size = { half_size_x, half_size_y, 1 },
-            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-        });
-
-        device.destroy_image(ssao_blur_image);
-        this->ssao_blur_image = this->device.create_image({
-            .format = daxa::Format::R8_UNORM,
-            .aspect = daxa::ImageAspectFlagBits::COLOR,
-            .size = { half_size_x, half_size_y, 1 },
-            .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-        });
-
         bloom_renderer->resize({size_x, size_y});
+        ssao_renderer->resize({half_size_x, half_size_y});
 
         on_update();
     }

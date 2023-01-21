@@ -32,7 +32,9 @@ add_executable(${PROJECT_NAME}
     "src/data/components.hpp"
     "src/panels/scene_hiearchy.cpp"
     "src/panels/viewport_panel.cpp"
-    "src/bloom.cpp"
+    "src/rendering/bloom_renderer.cpp"
+    "src/rendering/ssao_renderer.cpp"
+    "src/utils/threadpool.hpp"
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw stb_interface fastgltf yaml-cpp EnTT::EnTT imgui::imgui)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
