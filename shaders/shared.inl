@@ -79,11 +79,13 @@ struct DrawPush {
 };
 
 struct CompositionPush {
+    f32mat4x4 light_matrix;
     TextureId albedo;
     TextureId normal;
     TextureId emissive;
     TextureId depth;
     TextureId ssao;
+    TextureId shadow;
     daxa_RWBufferPtr(LightsInfo) lights_buffer;
     daxa_RWBufferPtr(CameraInfo) camera_buffer;
 };
@@ -102,4 +104,10 @@ struct BloomPush {
     TextureId src_texture;
     f32vec2 src_resolution;
     f32 filter_radius;
+};
+
+struct ShadowPush {
+    f32mat4x4 light_matrix;
+    daxa_RWBufferPtr(DrawVertex) face_buffer;
+    daxa_RWBufferPtr(ObjectInfo) object_buffer;
 };

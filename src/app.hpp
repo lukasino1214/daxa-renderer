@@ -60,7 +60,11 @@ struct App : AppWindow<App> {
     daxa::ImageId normal_image;
     daxa::ImageId emissive_image;
 
+    daxa::ImageId shadow_image;
+    std::shared_ptr<daxa::RasterPipeline> shadow_pipeline;
+
     daxa::SamplerId sampler;
+    daxa::SamplerId shadow_sampler;
 
     u32 half_size_x = size_x / 2;
     u32 half_size_y = size_y / 2;

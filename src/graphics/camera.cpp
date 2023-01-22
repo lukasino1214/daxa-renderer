@@ -27,6 +27,8 @@ namespace dare {
         auto delta_pos = speed * dt;
         if (move.sprint)
             delta_pos *= sprint_speed;
+        if (move.slow_walk)
+            delta_pos *= slow_walk_speed;
         if (move.px)
             pos.z += sin_rot_x * delta_pos, pos.x += cos_rot_x * delta_pos;
         if (move.nx)
@@ -62,6 +64,8 @@ namespace dare {
             move.ny = action != 0;
         if (key == keybinds.toggle_sprint)
             move.sprint = action != 0;
+        if (key == keybinds.toggle_slow_walk)
+            move.slow_walk = action != 0;
     }
 
     void ControlledCamera3D::on_mouse_move(f32 delta_x, f32 delta_y) {

@@ -35,6 +35,7 @@ namespace dare {
             i32 move_py, move_ny;
             i32 toggle_pause;
             i32 toggle_sprint;
+            i32 toggle_slow_walk;
         };
 
         static inline constexpr Keybinds DEFAULT_KEYBINDS {
@@ -46,6 +47,7 @@ namespace dare {
             .move_ny = GLFW_KEY_LEFT_CONTROL,
             .toggle_pause = GLFW_KEY_RIGHT_ALT,
             .toggle_sprint = GLFW_KEY_LEFT_SHIFT,
+            .toggle_slow_walk = GLFW_KEY_TAB
         };
     } // namespace input
 
@@ -55,10 +57,11 @@ namespace dare {
         glm::vec3 pos{0, 0, 0}, vel{}, rot{};
         f32 speed = 30.0f, mouse_sens = 0.1f;
         f32 sprint_speed = 8.0f;
+        f32 slow_walk_speed = 1.0f / 8.0f;
         f32 sin_rot_x = 0, cos_rot_x = 1;
 
         struct MoveFlags {
-            uint8_t px : 1, py : 1, pz : 1, nx : 1, ny : 1, nz : 1, sprint : 1;
+            uint8_t px : 1, py : 1, pz : 1, nx : 1, ny : 1, nz : 1, sprint : 1, slow_walk : 1;
         } move{};
 
         void update(f32 dt);
