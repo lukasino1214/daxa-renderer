@@ -125,10 +125,10 @@ App::App() : AppWindow<App>("daxa-renderer")  {
         },
         .raster = {
             .face_culling = daxa::FaceCullFlagBits::NONE,
-            .depth_bias_enable = true,
+            /*.depth_bias_enable = true,
             .depth_bias_constant_factor = 1.25f, 
             .depth_bias_clamp = 0.0f,
-            .depth_bias_slope_factor = 1.75f
+            .depth_bias_slope_factor = 1.75f*/
         },
         .push_constant_size = sizeof(ShadowPush),
         .debug_name = "raster_pipeline",
@@ -155,9 +155,9 @@ App::App() : AppWindow<App>("daxa-renderer")  {
         .magnification_filter = daxa::Filter::LINEAR,
         .minification_filter = daxa::Filter::LINEAR,
         .mipmap_filter = daxa::Filter::LINEAR,
-        .address_mode_u = daxa::SamplerAddressMode::CLAMP_TO_EDGE,
-        .address_mode_v = daxa::SamplerAddressMode::CLAMP_TO_EDGE,
-        .address_mode_w = daxa::SamplerAddressMode::CLAMP_TO_EDGE,
+        .address_mode_u = daxa::SamplerAddressMode::CLAMP_TO_BORDER,
+        .address_mode_v = daxa::SamplerAddressMode::CLAMP_TO_BORDER,
+        .address_mode_w = daxa::SamplerAddressMode::CLAMP_TO_BORDER,
         .mip_lod_bias = 0.0f,
         .enable_anisotropy = true,
         .max_anisotropy = 16.0f,
@@ -273,13 +273,6 @@ void App::render() {
     lightProjection = glm::ortho(near_plane, far_plane, near_plane, far_plane, near_plane, far_plane);
     lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, -1.0, 0.0));
     lightSpaceMatrix = lightProjection * lightView;
-
-    /*glm::mat4 realTransform = transform.transformMatrix;
-    realTransform = glm::rotate(realTransform, glm::half_pi<float>(), glm::vec3(1.f, 0.f, 0.f));
-    glm::vec3 direction = glm::normalize(realTransform[2]); // convert rotation to direction*/
-    // render scene from light's point of view
-    /*simpleDepthShader.use();
-    simpleDepthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);*/
 
     cmd_list.pipeline_barrier_image_transition({
         .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
@@ -413,6 +406,12 @@ void App::render() {
         .render_area = {.x = 0, .y = 0, .width = size_x, .height = size_y},
     });
     cmd_list.set_pipeline(*deffered_pipeline);
+    /*cmd_list.set_scissor({
+        .x = 0,
+        .y = 0,
+        .width = size_x,
+        .height = size_y,
+    });*/
 
     DrawPush push;
     push.lights_buffer = scene->lights_buffer->buffer_address;
@@ -446,6 +445,12 @@ void App::render() {
     });
 
     cmd_list.set_pipeline(*composition_pipeline);
+    /*cmd_list.set_scissor({
+        .x = 0,
+        .y = 0,
+        .width = size_x,
+        .height = size_y,
+    });*/
 
     cmd_list.push_constant(CompositionPush {
         .light_matrix = *reinterpret_cast<const f32mat4x4*>(&lightSpaceMatrix),
@@ -454,7 +459,7 @@ void App::render() {
         .emissive = { .image_view_id = emissive_image.default_view(), .sampler_id = sampler },
         .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
         .ssao = { .image_view_id = ssao_renderer->ssao_blur_image.default_view(), .sampler_id = sampler },
-        .shadow = { .image_view_id = shadow_image.default_view(), .sampler_id = sampler },
+        .shadow = { .image_view_id = shadow_image.default_view(), .sampler_id = shadow_sampler },
         .lights_buffer = scene->lights_buffer->buffer_address,
         .camera_buffer = camera_buffer->buffer_address,
     });

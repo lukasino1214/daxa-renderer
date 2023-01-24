@@ -112,6 +112,12 @@ namespace dare {
             .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(mip_chain[0].int_size.x), .height = static_cast<u32>(mip_chain[0].int_size.y)},
         });
         cmd_list.set_pipeline(*down_sample_pipeline);
+        /*cmd_list.set_scissor({
+            .x = 0,
+            .y = 0,
+            .width = static_cast<u32>(mip_chain[0].int_size.x),
+            .height = static_cast<u32>(mip_chain[0].int_size.y),
+        });*/
         cmd_list.push_constant(BloomPush {
             .src_texture = { .image_view_id = src_image.default_view(), .sampler_id = sampler },
             .src_resolution = { static_cast<f32>(window_size.x), static_cast<f32>(window_size.y) },
@@ -146,6 +152,12 @@ namespace dare {
                 .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(mip_chain[i+1].int_size.x), .height = static_cast<u32>(mip_chain[i+1].int_size.y)},
             });
             cmd_list.set_pipeline(*down_sample_pipeline);
+            /*cmd_list.set_scissor({
+                .x = 0,
+                .y = 0,
+                .width = static_cast<u32>(mip_chain[i+1].int_size.x),
+                .height = static_cast<u32>(mip_chain[i+1].int_size.y),
+            });*/
             cmd_list.push_constant(BloomPush {
                 .src_texture = { .image_view_id = mip_chain[i].texture.default_view(), .sampler_id = sampler },
                 .src_resolution = { static_cast<f32>(mip_chain[i].int_size.x ), static_cast<f32>(mip_chain[i].int_size.y) },
@@ -183,6 +195,12 @@ namespace dare {
                 .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(mip_chain[i-1].int_size.x), .height = static_cast<u32>(mip_chain[i-1].int_size.y)},
             });
             cmd_list.set_pipeline(*up_sample_pipeline);
+            /*cmd_list.set_scissor({
+                .x = 0,
+                .y = 0,
+                .width = static_cast<u32>(mip_chain[i-1].int_size.x),
+                .height = static_cast<u32>(mip_chain[i-1].int_size.y),
+            });*/
             cmd_list.push_constant(BloomPush {
                 .src_texture = { .image_view_id = mip_chain[i].texture.default_view(), .sampler_id = sampler },
                 .src_resolution = { static_cast<f32>(mip_chain[i].int_size.x), static_cast<f32>(mip_chain[i].int_size.y) },
@@ -217,6 +235,12 @@ namespace dare {
             .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(window_size.x ), .height = static_cast<u32>(window_size.y)},
         });
         cmd_list.set_pipeline(*up_sample_pipeline);
+        /*cmd_list.set_scissor({
+            .x = 0,
+            .y = 0,
+            .width = static_cast<u32>(window_size.x),
+            .height = static_cast<u32>(window_size.y),
+        });*/
         cmd_list.push_constant(BloomPush {
             .src_texture = { .image_view_id = mip_chain[0].texture.default_view(), .sampler_id = sampler },
             .src_resolution = { static_cast<f32>(mip_chain[0].int_size.x), static_cast<f32>(mip_chain[0].int_size.y) },

@@ -73,6 +73,12 @@ namespace dare {
             .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(static_cast<u32>(half_size.x)), .height = static_cast<u32>(static_cast<u32>(half_size.y))},
         });
         cmd_list.set_pipeline(*ssao_generation_pipeline);
+        /*cmd_list.set_scissor({
+            .x = 0,
+            .y = 0,
+            .width = static_cast<u32>(half_size.x),
+            .height = static_cast<u32>(half_size.y),
+        });*/
         cmd_list.push_constant(SSAOGenerationPush {
             .normal = { .image_view_id = normal_image.default_view(), .sampler_id = sampler },
             .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
@@ -92,6 +98,12 @@ namespace dare {
             .render_area = {.x = 0, .y = 0, .width = static_cast<u32>(static_cast<u32>(half_size.x)), .height = static_cast<u32>(static_cast<u32>(half_size.y))},
         });
         cmd_list.set_pipeline(*ssao_blur_pipeline);
+        /*cmd_list.set_scissor({
+            .x = 0,
+            .y = 0,
+            .width = static_cast<u32>(half_size.x),
+            .height = static_cast<u32>(half_size.y),
+        });*/
         cmd_list.push_constant(SSAOBlurPush {
             .ssao = { .image_view_id = ssao_image.default_view(), .sampler_id = sampler },
         });
