@@ -19,5 +19,14 @@ void main() {
     gl_Position = daxa_push_constant.light_matrix * OBJECT.model_matrix * vec4(VERTEX.position, 1.0);
 }
 #elif defined(DRAW_FRAG)
-void main() {}
+layout(location = 0) out f32vec2 out_color;
+void main() {
+    float depth = gl_FragCoord.z;
+
+    float dx = dFdx(depth);
+    float dy = dFdy(depth);
+    float moment2 = depth * depth + 0.25 * (dx * dx + dy * dy);
+
+    out_color = vec2(depth, moment2);
+}
 #endif

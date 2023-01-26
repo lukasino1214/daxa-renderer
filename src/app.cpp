@@ -107,19 +107,35 @@ App::App() : AppWindow<App>("daxa-renderer")  {
         .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
     });
 
-    this->shadow_image = device.create_image({
-        .format = daxa::Format::D32_SFLOAT,
+    this->shadow_depth_image = device.create_image({
+        .format = daxa::Format::D16_UNORM,
         .aspect = daxa::ImageAspectFlagBits::DEPTH,
         .size = {shadow, shadow, 1},
         .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
     });
 
+    this->variance_shadow_image = device.create_image({
+        .format = daxa::Format::R16G16_UNORM,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {shadow, shadow, 1},
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+    });
+
+    this->temp_variance_shadow_image = device.create_image({
+        .format = daxa::Format::R16G16_UNORM,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {shadow, shadow, 1},
+        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+    });
+
     this->shadow_pipeline = pipeline_manager.add_raster_pipeline({
         .vertex_shader_info = {.source = daxa::ShaderFile{"shadow.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
         .fragment_shader_info = {.source = daxa::ShaderFile{"shadow.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
-        .color_attachments = {},
+        .color_attachments = {
+            { .format = daxa::Format::R16G16_UNORM },
+        },
         .depth_test = {
-            .depth_attachment_format = daxa::Format::D32_SFLOAT,
+            .depth_attachment_format = daxa::Format::D16_UNORM,
             .enable_depth_test = true,
             .enable_depth_write = true,
         },
@@ -131,6 +147,19 @@ App::App() : AppWindow<App>("daxa-renderer")  {
             .depth_bias_slope_factor = 1.75f*/
         },
         .push_constant_size = sizeof(ShadowPush),
+        .debug_name = "raster_pipeline",
+    }).value();
+
+    this->filter_gauss_pipeline = pipeline_manager.add_raster_pipeline({
+        .vertex_shader_info = {.source = daxa::ShaderFile{"filter_gauss.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
+        .fragment_shader_info = {.source = daxa::ShaderFile{"filter_gauss.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
+        .color_attachments = {
+            { .format = daxa::Format::R16G16_UNORM },
+        },
+        .raster = {
+            .face_culling = daxa::FaceCullFlagBits::NONE,
+        },
+        .push_constant_size = sizeof(GaussPush),
         .debug_name = "raster_pipeline",
     }).value();
 
@@ -203,7 +232,9 @@ App::~App() {
     device.destroy_image(normal_image);
     device.destroy_image(emissive_image);
     device.destroy_sampler(sampler);
-    device.destroy_image(shadow_image);
+    device.destroy_image(shadow_depth_image);
+    device.destroy_image(variance_shadow_image);
+    device.destroy_image(temp_variance_shadow_image);
     device.destroy_sampler(shadow_sampler);
     ImGui_ImplGlfw_Shutdown();
 }
@@ -279,12 +310,35 @@ void App::render() {
         .before_layout = daxa::ImageLayout::UNDEFINED,
         .after_layout = daxa::ImageLayout::GENERAL,
         .image_slice = {.image_aspect = daxa::ImageAspectFlagBits::DEPTH },
-        .image_id = shadow_image,
+        .image_id = shadow_depth_image,
+    });
+
+    cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+        .before_layout = daxa::ImageLayout::UNDEFINED,
+        .after_layout = daxa::ImageLayout::GENERAL,
+        .image_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR },
+        .image_id = variance_shadow_image,
+    });
+
+    cmd_list.pipeline_barrier_image_transition({
+        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
+        .before_layout = daxa::ImageLayout::UNDEFINED,
+        .after_layout = daxa::ImageLayout::GENERAL,
+        .image_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR },
+        .image_id = temp_variance_shadow_image,
     });
 
     cmd_list.begin_renderpass({
+        .color_attachments = {
+            {
+                .image_view = variance_shadow_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{1.0f, 1.0f, 1.0f, 1.0f},
+            },
+        },
         .depth_attachment = {{
-            .image_view = shadow_image.default_view(),
+            .image_view = shadow_depth_image.default_view(),
             .load_op = daxa::AttachmentLoadOp::CLEAR,
             .clear_value = daxa::DepthValue{1.0f, 0},
         }},
@@ -312,6 +366,48 @@ void App::render() {
             model->draw(cmd_list);
         }
     });
+
+    cmd_list.end_renderpass();
+
+    cmd_list.begin_renderpass({
+        .color_attachments = {
+            {
+                .image_view = temp_variance_shadow_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{1.0f, 1.0f, 1.0f, 1.0f},
+            },
+        },
+        .render_area = {.x = 0, .y = 0, .width = shadow, .height = shadow},
+    });
+    cmd_list.set_pipeline(*filter_gauss_pipeline);
+
+    
+    cmd_list.push_constant(GaussPush {
+        .src_texture = variance_shadow_image.default_view(),
+        .blur_scale = { 1.0f / static_cast<f32>(shadow), 0.0f }
+    });
+    cmd_list.draw({ .vertex_count = 3});
+
+    cmd_list.end_renderpass();
+
+    cmd_list.begin_renderpass({
+        .color_attachments = {
+            {
+                .image_view = variance_shadow_image.default_view(),
+                .load_op = daxa::AttachmentLoadOp::CLEAR,
+                .clear_value = std::array<f32, 4>{1.0f, 1.0f, 1.0f, 1.0f},
+            },
+        },
+        .render_area = {.x = 0, .y = 0, .width = shadow, .height = shadow},
+    });
+    cmd_list.set_pipeline(*filter_gauss_pipeline);
+
+    
+    cmd_list.push_constant(GaussPush {
+        .src_texture = temp_variance_shadow_image.default_view(),
+        .blur_scale = { 0.0f, 1.0f / static_cast<f32>(shadow) }
+    });
+    cmd_list.draw({ .vertex_count = 3});
 
     cmd_list.end_renderpass();
 
@@ -459,7 +555,8 @@ void App::render() {
         .emissive = { .image_view_id = emissive_image.default_view(), .sampler_id = sampler },
         .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
         .ssao = { .image_view_id = ssao_renderer->ssao_blur_image.default_view(), .sampler_id = sampler },
-        .shadow = { .image_view_id = shadow_image.default_view(), .sampler_id = shadow_sampler },
+        //.shadow = { .image_view_id = shadow_depth_image.default_view(), .sampler_id = shadow_sampler },
+        .shadow = { .image_view_id = variance_shadow_image.default_view(), .sampler_id = shadow_sampler },
         .lights_buffer = scene->lights_buffer->buffer_address,
         .camera_buffer = camera_buffer->buffer_address,
     });

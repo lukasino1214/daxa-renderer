@@ -60,8 +60,11 @@ struct App : AppWindow<App> {
     daxa::ImageId normal_image;
     daxa::ImageId emissive_image;
 
-    daxa::ImageId shadow_image;
+    daxa::ImageId shadow_depth_image;
+    daxa::ImageId variance_shadow_image;
+    daxa::ImageId temp_variance_shadow_image;
     std::shared_ptr<daxa::RasterPipeline> shadow_pipeline;
+    std::shared_ptr<daxa::RasterPipeline> filter_gauss_pipeline;
 
     daxa::SamplerId sampler;
     daxa::SamplerId shadow_sampler;

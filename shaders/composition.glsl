@@ -23,14 +23,34 @@ layout(location = 0) out f32vec4 out_color;
 
 layout(location = 0) in f32vec2 in_uv;
 
+/*
+    // NORMAL SHADOWS
 float ShadowCalculation(vec4 shadowCoord, vec2 off) {
     vec2 kys = shadowCoord.xy * 0.5 + 0.5;
-	return sample_shadow(daxa_push_constant.shadow, kys.xy + off, shadowCoord.z - 0.005).r < 0.1 ? 0.1 : 1.0;
+	return max(sample_shadow(daxa_push_constant.shadow, kys.xy + off, shadowCoord.z - 0.005).r, 0.1);
+}*/
+
+    // VARIANCE SHADOWS
+
+float linstep(float low, float high, float v) {
+    return clamp((v-low)/(high-low), 0.0, 1.0);
+}
+
+float ShadowCalculation(vec4 shadowCoord, vec2 off) {
+    vec2 kys = shadowCoord.xy * 0.5 + 0.5;
+	
+    vec2 moments = sample_texture(daxa_push_constant.shadow, kys.xy).xy;
+    float p = step(shadowCoord.z, moments.x);
+    float variance = max(moments.y - moments.x * moments.x, 0.00002);
+	float d = shadowCoord.z - moments.x;
+	float pMax = linstep(0.1, 1.0, variance / (variance + d*d));
+
+    return max(max(p, pMax), 0.1);
 }
 
 float ShadowCalculationPCF(vec4 sc) {
-    ivec2 texDim = texture_size(daxa_push_constant.shadow, 0);
-	float scale = 0.5;
+    /*ivec2 texDim = texture_size(daxa_push_constant.shadow, 0);
+	float scale = 0.75;
 	float dx = scale * 1.0 / float(texDim.x);
 	float dy = scale * 1.0 / float(texDim.y);
 
@@ -45,7 +65,9 @@ float ShadowCalculationPCF(vec4 sc) {
 		}
 	
 	}
-	return shadowFactor / count;
+	return shadowFactor / count;*/
+
+    return ShadowCalculation(sc, vec2(0.0));
 }
 
 void main() {

@@ -111,3 +111,8 @@ struct ShadowPush {
     daxa_RWBufferPtr(DrawVertex) face_buffer;
     daxa_RWBufferPtr(ObjectInfo) object_buffer;
 };
+
+struct GaussPush {
+    TextureId src_texture;
+    f32vec2 blur_scale;
+};
