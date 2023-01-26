@@ -52,7 +52,7 @@ vec3 getNormalFromMap(TextureId normal_map) {
     vec3 N   = normalize(in_normal);
 
     vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B  = -normalize(cross(N, T));
+    vec3 B  = normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
 
     return normalize(TBN * tangentNormal);
@@ -63,12 +63,11 @@ void main() {
     f32vec4 color = sample_texture(MATERIAL.albedo, in_uv);
     if(color.a < 0.1) { discard; }
 
-    //out_albedo = color;
-
     f32vec3 normal = normalize(in_normal);
     if(MATERIAL.has_normal_map == 1) {
         normal = normalize(getNormalFromMap(MATERIAL.normal_map));
     }
+
     out_normal = f32vec4(normal, 1);
 
     f32vec3 emissive  = f32vec3(0.0);
