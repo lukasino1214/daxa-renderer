@@ -4,6 +4,7 @@
 #include <daxa/daxa.inl>
 
 #include "utils/lighting.glsl"
+#include "utils/core.glsl"
 
 struct DrawVertex {
     f32vec3 position;
@@ -13,11 +14,6 @@ struct DrawVertex {
 };
 
 DAXA_ENABLE_BUFFER_PTR(DrawVertex)
-
-struct TextureId {
-    daxa_Image2Df32 image_view_id;
-    daxa_SamplerId sampler_id;
-};
 
 #define MAX_LIGHTS 16
 
@@ -79,13 +75,11 @@ struct DrawPush {
 };
 
 struct CompositionPush {
-    f32mat4x4 light_matrix;
     TextureId albedo;
     TextureId normal;
     TextureId emissive;
     TextureId depth;
     TextureId ssao;
-    TextureId shadow;
     daxa_RWBufferPtr(LightsInfo) lights_buffer;
     daxa_RWBufferPtr(CameraInfo) camera_buffer;
 };

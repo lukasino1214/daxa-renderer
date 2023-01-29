@@ -18,7 +18,7 @@ namespace dare {
             Entity create_entity_with_UUID(UUID uuid, const std::string &name = std::string());
             void destroy_entity(Entity entity);
             void iterate(std::function<void(Entity)> fn);
-            void update();
+            void update(daxa::CommandList& cmd_list);
 
             std::unique_ptr<Buffer<LightsInfo>> lights_buffer;
 

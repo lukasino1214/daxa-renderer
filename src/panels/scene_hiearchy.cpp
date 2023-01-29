@@ -13,11 +13,11 @@ namespace dare {
     }
 
     template<typename T>
-    static inline void draw_component(std::string_view name, Entity entity, std::function<void(T&)> fn) {
+    static inline void draw_component(std::string_view name, Entity entity, std::function<void(Entity&, T&)> fn) {
         if(entity.has_component<T>()) {
             ImGui::Text("%s", name.data());
             ImGui::Separator();
-            fn(entity.get_component<T>());
+            fn(entity, entity.get_component<T>());
             ImGui::Separator();
         }
     }
@@ -92,11 +92,11 @@ namespace dare {
             ImGui::EndPopup();
         }
 
-            draw_component<TagComponent>("TagComponent", selected_entity, [](TagComponent& comp) {
+            draw_component<TagComponent>("TagComponent", selected_entity, [](Entity entity, TagComponent& comp) {
                 ImGui::Text("Entity name: %s", comp.tag.c_str());
             });
 
-            draw_component<TransformComponent>("TransformComponent", selected_entity, [](TransformComponent& comp) {
+            draw_component<TransformComponent>("TransformComponent", selected_entity, [](Entity entity, TransformComponent& comp) {
                 glm::vec3 translation = comp.translation;
                 glm::vec3 rotation = comp.rotation;
                 glm::vec3 scale = comp.scale;
@@ -108,29 +108,49 @@ namespace dare {
                 if(translation != comp.translation) { comp.is_dirty = true; }
                 if(rotation != comp.rotation) { comp.is_dirty = true; }
                 if(scale != comp.scale) { comp.is_dirty = true; }
+
+                if(comp.is_dirty) {
+                    if(entity.has_component<DirectionalLightComponent>()) {
+                        auto& light = entity.get_component<DirectionalLightComponent>();
+                        light.shadow_info.has_moved = true;
+                    }
+
+                    if(entity.has_component<PointLightComponent>()) {
+                        auto& light = entity.get_component<PointLightComponent>();
+                        light.shadow_info.has_moved = true;
+                    }
+
+                    if(entity.has_component<SpotLightComponent>()) {
+                        auto& light = entity.get_component<SpotLightComponent>();
+                        light.shadow_info.has_moved = true;
+                    }
+                }
             });
 
-            draw_component<ModelComponent>("ModelComponent", selected_entity, [](ModelComponent& comp) {
+            draw_component<ModelComponent>("ModelComponent", selected_entity, [](Entity entity, ModelComponent& comp) {
                 ImGui::Text("File path: %s", comp.model->path.c_str());
             });
 
-            draw_component<DirectionalLightComponent>("DirectionalLightComponent", selected_entity, [](DirectionalLightComponent& comp) {
+            draw_component<DirectionalLightComponent>("DirectionalLightComponent", selected_entity, [](Entity entity, DirectionalLightComponent& comp) {
                 ImGui::DragFloat3("Direction", &comp.direction.x);
                 ImGui::ColorPicker3("Color", &comp.color.x);
                 ImGui::DragFloat("Intensity", &comp.intensity);
+                ImGui::DragInt("Shadow Update Time", &comp.shadow_info.update_time, 1, 1, 1000);
             });
 
-            draw_component<PointLightComponent>("PointLightComponent", selected_entity, [](PointLightComponent& comp) {
+            draw_component<PointLightComponent>("PointLightComponent", selected_entity, [](Entity entity, PointLightComponent& comp) {
                 ImGui::ColorPicker3("Color", &comp.color.x);
                 ImGui::DragFloat("Intensity", &comp.intensity);
+                ImGui::DragInt("Shadow Update Time", &comp.shadow_info.update_time, 1, 1, 1000);
             });
 
-            draw_component<SpotLightComponent>("SpotLightComponent", selected_entity, [](SpotLightComponent& comp) {
+            draw_component<SpotLightComponent>("SpotLightComponent", selected_entity, [](Entity entity, SpotLightComponent& comp) {
                 ImGui::DragFloat3("Direction", &comp.direction.x);
                 ImGui::ColorPicker3("Color", &comp.color.x);
                 ImGui::DragFloat("Intensity", &comp.intensity);
                 ImGui::DragFloat("CutOff", &comp.cut_off);
                 ImGui::DragFloat("OuterCutOff", &comp.outer_cut_off);
+                ImGui::DragInt("Shadow Update Time", &comp.shadow_info.update_time, 1, 1, 1000);
             });
 
         } else {

@@ -37,18 +37,18 @@ namespace dare {
         });
     };
 
-    void Scene::update() {
-        auto cmd_list = device.create_command_list({
+    void Scene::update(daxa::CommandList& cmd_list) {
+        /*auto cmd_list = device.create_command_list({
             .debug_name = "updating object info of entities",
-        });
+        });*/
 
-        LightsInfo info;
+        /*LightsInfo info;
         info.num_directional_lights = 0;
         info.num_point_lights = 0;
-        info.num_spot_lights = 0;
+        info.num_spot_lights = 0;*/
 
         iterate([&](Entity entity) {
-            if(entity.has_component<DirectionalLightComponent>()) {
+            /*if(entity.has_component<DirectionalLightComponent>()) {
                 auto& comp = entity.get_component<DirectionalLightComponent>();
                 glm::vec3 dir = comp.direction;
                 glm::vec3 col = comp.color;
@@ -83,7 +83,7 @@ namespace dare {
                 info.spot_lights[info.num_spot_lights].outer_cut_off = glm::cos(glm::radians(comp.outer_cut_off));
                 info.num_spot_lights++;
                 return;
-            }
+            }*/
 
             auto& comp = entity.get_component<TransformComponent>();
             if(comp.is_dirty) {
@@ -98,11 +98,11 @@ namespace dare {
             }
         });
 
-        lights_buffer->update(cmd_list, info);
+        //lights_buffer->update(cmd_list, info);
 
-        cmd_list.complete();
+        /*cmd_list.complete();
         device.submit_commands({
             .command_lists = {std::move(cmd_list)}
-        });
+        });*/
     }
 }

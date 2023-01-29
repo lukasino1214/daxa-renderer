@@ -28,8 +28,8 @@ namespace dare {
     };
 
     struct TransformComponent {
-        glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-        glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
+        glm::vec3 translation = {0.001f, 0.001f, 0.001f};
+        glm::vec3 rotation = {0.001f, 0.001f, 0.001f};
         glm::vec3 scale = {1.0f, 1.0f, 1.0f};
         glm::mat4 model_matrix = glm::mat4(1.0);
         glm::mat4 normal_matrix = glm::mat4(1.0);
@@ -64,10 +64,32 @@ namespace dare {
         ModelComponent(const std::shared_ptr<Model> &_model) : model{_model} {};
     };
 
+    enum struct ShadowType: i32 {
+        NONE = 0,
+        PCF = 1,
+        VARIANCE = 2
+    };
+
+    struct ShadowInfo {
+        glm::mat4 view;
+        glm::mat4 projection;
+        daxa::ImageId depth_image;
+        daxa::ImageId shadow_image;
+        daxa::ImageId temp_shadow_image;
+        bool has_to_create = true;
+        bool has_moved = true;
+        bool has_to_resize = false;
+        glm::ivec2 image_size = {1024, 1024};
+        f32 clip_space = 128.0f;
+        i32 update_time = 250;
+        ShadowType type = ShadowType::NONE;
+    };
+
     struct DirectionalLightComponent {
         glm::vec3 direction = { 0.0f, -1.0f, 0.0f };
         glm::vec3 color = { 1.0f, 1.0f, 1.0f };
         f32 intensity = 32.0f;
+        ShadowInfo shadow_info;
 
         DirectionalLightComponent() = default;
         DirectionalLightComponent(const DirectionalLightComponent&) = default;
@@ -76,6 +98,7 @@ namespace dare {
     struct PointLightComponent {
         glm::vec3 color = { 1.0f, 1.0f, 1.0f };
         f32 intensity = 32.0f;
+        ShadowInfo shadow_info;
 
         PointLightComponent() = default;
         PointLightComponent(const PointLightComponent&) = default;
@@ -87,6 +110,7 @@ namespace dare {
         f32 intensity = 32.0f;
         f32 cut_off = 60.0f;
         f32 outer_cut_off = 70.0f;
+        ShadowInfo shadow_info;
 
         SpotLightComponent() = default;
         SpotLightComponent(const SpotLightComponent&) = default;

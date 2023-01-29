@@ -200,6 +200,9 @@ namespace dare {
                     light.direction = directional_light_component["Direction"].as<glm::vec3>();
                     light.color = directional_light_component["Color"].as<glm::vec3>();
                     light.intensity = directional_light_component["Intensity"].as<f32>();
+
+                    light.shadow_info.has_to_create = true;
+                    light.shadow_info.has_moved = true;
                 }
 
                 auto point_light_component = entity["PointLightComponent"];
@@ -207,6 +210,9 @@ namespace dare {
                     auto& light = deserialized_entity.add_component<PointLightComponent>();
                     light.color = point_light_component["Color"].as<glm::vec3>();
                     light.intensity = point_light_component["Intensity"].as<f32>();
+
+                    light.shadow_info.has_to_create = true;
+                    light.shadow_info.has_moved = true;
                 }
 
                 auto spot_light_component = entity["SpotLightComponent"];
@@ -217,6 +223,9 @@ namespace dare {
                     light.intensity = spot_light_component["Intensity"].as<f32>();
                     light.cut_off = spot_light_component["CutOff"].as<f32>();
                     light.outer_cut_off = spot_light_component["OuterCutOff"].as<f32>();
+
+                    light.shadow_info.has_to_create = true;
+                    light.shadow_info.has_moved = true;
                 }
             }
         }

@@ -23,51 +23,92 @@ layout(location = 0) out f32vec4 out_color;
 
 layout(location = 0) in f32vec2 in_uv;
 
-/*
-    // NORMAL SHADOWS
-float ShadowCalculation(vec4 shadowCoord, vec2 off) {
-    vec2 kys = shadowCoord.xy * 0.5 + 0.5;
-	return max(sample_shadow(daxa_push_constant.shadow, kys.xy + off, shadowCoord.z - 0.005).r, 0.1);
-}*/
-
-    // VARIANCE SHADOWS
-
 float linstep(float low, float high, float v) {
     return clamp((v-low)/(high-low), 0.0, 1.0);
 }
 
-float ShadowCalculation(vec4 shadowCoord, vec2 off) {
-    vec2 kys = shadowCoord.xy * 0.5 + 0.5;
+float normal_shadow(TextureId shadow_image, vec4 shadow_coord, vec2 off) {
+    vec2 proj_coord = shadow_coord.xy * 0.5 + 0.5;
+	return max(sample_shadow(shadow_image, proj_coord.xy + off, shadow_coord.z - 0.005).r, 0.1);
+}
+
+float shadow_pcf(TextureId shadow_image, vec4 shadow_coord) {
+    ivec2 tex_dim = texture_size(shadow_image, 0);
+	float scale = 0.25;
+	float dx = scale * 1.0 / float(tex_dim.x);
+	float dy = scale * 1.0 / float(tex_dim.y);
+
+	float shadow_factor = 0.0;
+	int count = 0;
+	int range = 2;
 	
-    vec2 moments = sample_texture(daxa_push_constant.shadow, kys.xy).xy;
-    float p = step(shadowCoord.z, moments.x);
+	for (int x = -range; x <= range; x++) {
+		for (int y = -range; y <= range; y++) {
+			shadow_factor += normal_shadow(shadow_image, shadow_coord, vec2(dx*x, dy*y));
+			count++;
+		}
+	
+	}
+	return (shadow_factor / count);
+}
+
+float variance_shadow(TextureId shadow_image, vec4 shadow_coord) {
+    vec3 proj_coord = shadow_coord.xyz * 0.5 + 0.5;
+	
+    vec2 moments = sample_texture(shadow_image, proj_coord.xy).xy;
+    float p = step(shadow_coord.z, moments.x);
     float variance = max(moments.y - moments.x * moments.x, 0.00002);
-	float d = shadowCoord.z - moments.x;
+	float d = shadow_coord.z - moments.x;
 	float pMax = linstep(0.1, 1.0, variance / (variance + d*d));
 
     return max(max(p, pMax), 0.1);
 }
 
-float ShadowCalculationPCF(vec4 sc) {
-    /*ivec2 texDim = texture_size(daxa_push_constant.shadow, 0);
-	float scale = 0.75;
-	float dx = scale * 1.0 / float(texDim.x);
-	float dy = scale * 1.0 / float(texDim.y);
+float calculate_shadow(f32vec4 position) {
+    f32 shadow_factor = 1.0f;
 
-	float shadowFactor = 0.0;
-	int count = 0;
-	int range = 3;
-	
-	for (int x = -range; x <= range; x++) {
-		for (int y = -range; y <= range; y++) {
-			shadowFactor += ShadowCalculation(sc, vec2(dx*x, dy*y));
-			count++;
-		}
-	
-	}
-	return shadowFactor / count;*/
+    for(uint i = 0; i < LIGHTS.num_directional_lights; i++) {
+        int type = LIGHTS.directional_lights[i].shadow_type;
+        vec4 shadow_coord = LIGHTS.directional_lights[i].light_matrix * position;
+        if(type == 0) { continue; }
+        if(type == 1) {
+            f32 shadow = shadow_pcf(LIGHTS.directional_lights[i].shadow_image, shadow_coord / shadow_coord.w);
+            if(shadow < shadow_factor) { shadow_factor = shadow; }
+        }
+        if(type == 2) {
+            f32 shadow = variance_shadow(LIGHTS.directional_lights[i].shadow_image, shadow_coord / shadow_coord.w);
+            if(shadow < shadow_factor) { shadow_factor = shadow; }
+        }
+    }
 
-    return ShadowCalculation(sc, vec2(0.0));
+    for(uint i = 0; i < LIGHTS.num_point_lights; i++) {
+        int type = LIGHTS.point_lights[i].shadow_type;
+        vec4 shadow_coord = LIGHTS.point_lights[i].light_matrix * position;
+        if(type == 0) { continue; }
+        if(type == 1) {
+            f32 shadow = shadow_pcf(LIGHTS.point_lights[i].shadow_image, shadow_coord / shadow_coord.w);
+            if(shadow < shadow_factor) { shadow_factor = shadow; }
+        }
+        if(type == 2) {
+            f32 shadow = variance_shadow(LIGHTS.point_lights[i].shadow_image, shadow_coord / shadow_coord.w);
+            if(shadow < shadow_factor) { shadow_factor = shadow; }
+        }
+    }
+
+    for(uint i = 0; i < LIGHTS.num_spot_lights; i++) {
+        int type = LIGHTS.spot_lights[i].shadow_type;
+        vec4 shadow_coord = LIGHTS.spot_lights[i].light_matrix * position;
+        if(type == 0) { continue; }
+        if(type == 1) {
+            f32 shadow = shadow_pcf(LIGHTS.spot_lights[i].shadow_image, shadow_coord / shadow_coord.w);
+            if(shadow > shadow_factor) { shadow_factor = shadow; }
+        }
+        if(type == 2) {
+            f32 shadow = variance_shadow(LIGHTS.spot_lights[i].shadow_image, shadow_coord / shadow_coord.w);
+            if(shadow > shadow_factor) { shadow_factor = shadow; }
+        }
+    }
+    return shadow_factor;
 }
 
 void main() {
@@ -103,8 +144,10 @@ void main() {
 
     ambient += bloom * 2;
 
-    f32vec4 shadow = vec4(daxa_push_constant.light_matrix * position);
-    ambient *= ShadowCalculationPCF(shadow / shadow.w);
+    //f32vec4 shadow = vec4(daxa_push_constant.light_matrix * position);
+    //ambient *= shadow_pcf(daxa_push_constant.shadow, shadow / shadow.w);
+    //ambient *= variance_shadow(daxa_push_constant.shadow, shadow / shadow.w);
+    ambient *= calculate_shadow(position);
 
     out_color = f32vec4(ambient, 1.0);
 }

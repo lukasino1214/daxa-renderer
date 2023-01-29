@@ -22,6 +22,7 @@ using namespace dare;
 
 #include "rendering/bloom_renderer.hpp"
 #include "rendering/ssao_renderer.hpp"
+#include "systems/light_system.hpp"
 
 struct App : AppWindow<App> {
     App();
@@ -60,23 +61,19 @@ struct App : AppWindow<App> {
     daxa::ImageId normal_image;
     daxa::ImageId emissive_image;
 
-    daxa::ImageId shadow_depth_image;
-    daxa::ImageId variance_shadow_image;
-    daxa::ImageId temp_variance_shadow_image;
-    std::shared_ptr<daxa::RasterPipeline> shadow_pipeline;
-    std::shared_ptr<daxa::RasterPipeline> filter_gauss_pipeline;
-
     daxa::SamplerId sampler;
     daxa::SamplerId shadow_sampler;
 
     u32 half_size_x = size_x / 2;
     u32 half_size_y = size_y / 2;
+    u32 cpu_frame_count = 0;
 
     std::unique_ptr<Buffer<CameraInfo>> camera_buffer;
     std::shared_ptr<SceneHiearchyPanel> scene_hiearchy;
 
     std::unique_ptr<BloomRenderer> bloom_renderer;
     std::unique_ptr<SSAORenderer> ssao_renderer;
+    std::unique_ptr<LightSystem> light_system;
 
     std::shared_ptr<Scene> scene;
 };

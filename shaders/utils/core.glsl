@@ -9,5 +9,11 @@
 #define MATERIAL deref(daxa_push_constant.material_info_buffer)
 #define LIGHTS deref(daxa_push_constant.lights_buffer)
 
+struct TextureId {
+    daxa_Image2Df32 image_view_id;
+    daxa_SamplerId sampler_id;
+};
+
 #define sample_texture(tex, uv) texture(tex.image_view_id, tex.sampler_id, uv)
 #define texture_size(tex, mip) textureSize(tex.image_view_id, mip)
+#define sample_shadow(texture_id, uv, c) textureShadow(texture_id.image_view_id, texture_id.sampler_id, uv, c)

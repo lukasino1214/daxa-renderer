@@ -107,62 +107,6 @@ App::App() : AppWindow<App>("daxa-renderer")  {
         .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
     });
 
-    this->shadow_depth_image = device.create_image({
-        .format = daxa::Format::D16_UNORM,
-        .aspect = daxa::ImageAspectFlagBits::DEPTH,
-        .size = {shadow, shadow, 1},
-        .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-    });
-
-    this->variance_shadow_image = device.create_image({
-        .format = daxa::Format::R16G16_UNORM,
-        .aspect = daxa::ImageAspectFlagBits::COLOR,
-        .size = {shadow, shadow, 1},
-        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-    });
-
-    this->temp_variance_shadow_image = device.create_image({
-        .format = daxa::Format::R16G16_UNORM,
-        .aspect = daxa::ImageAspectFlagBits::COLOR,
-        .size = {shadow, shadow, 1},
-        .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-    });
-
-    this->shadow_pipeline = pipeline_manager.add_raster_pipeline({
-        .vertex_shader_info = {.source = daxa::ShaderFile{"shadow.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
-        .fragment_shader_info = {.source = daxa::ShaderFile{"shadow.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
-        .color_attachments = {
-            { .format = daxa::Format::R16G16_UNORM },
-        },
-        .depth_test = {
-            .depth_attachment_format = daxa::Format::D16_UNORM,
-            .enable_depth_test = true,
-            .enable_depth_write = true,
-        },
-        .raster = {
-            .face_culling = daxa::FaceCullFlagBits::NONE,
-            /*.depth_bias_enable = true,
-            .depth_bias_constant_factor = 1.25f, 
-            .depth_bias_clamp = 0.0f,
-            .depth_bias_slope_factor = 1.75f*/
-        },
-        .push_constant_size = sizeof(ShadowPush),
-        .debug_name = "raster_pipeline",
-    }).value();
-
-    this->filter_gauss_pipeline = pipeline_manager.add_raster_pipeline({
-        .vertex_shader_info = {.source = daxa::ShaderFile{"filter_gauss.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_VERT"}}}},
-        .fragment_shader_info = {.source = daxa::ShaderFile{"filter_gauss.glsl"}, .compile_options = {.defines = {daxa::ShaderDefine{"DRAW_FRAG"}}}},
-        .color_attachments = {
-            { .format = daxa::Format::R16G16_UNORM },
-        },
-        .raster = {
-            .face_culling = daxa::FaceCullFlagBits::NONE,
-        },
-        .push_constant_size = sizeof(GaussPush),
-        .debug_name = "raster_pipeline",
-    }).value();
-
     this->sampler = this->device.create_sampler({
         .magnification_filter = daxa::Filter::LINEAR,
         .minification_filter = daxa::Filter::LINEAR,
@@ -222,6 +166,8 @@ App::App() : AppWindow<App>("daxa-renderer")  {
     comp.translation = {0.0f, 3.0f, 0.0f};
     comp.rotation = {90.0f, 0.0f, 0.0f};
     comp.scale = {1.0f, 1.0f, 1.0f};
+
+    light_system = std::make_unique<LightSystem>(scene, device, pipeline_manager);
 }
 
 App::~App() {
@@ -232,9 +178,6 @@ App::~App() {
     device.destroy_image(normal_image);
     device.destroy_image(emissive_image);
     device.destroy_sampler(sampler);
-    device.destroy_image(shadow_depth_image);
-    device.destroy_image(variance_shadow_image);
-    device.destroy_image(temp_variance_shadow_image);
     device.destroy_sampler(shadow_sampler);
     ImGui_ImplGlfw_Shutdown();
 }
@@ -264,6 +207,7 @@ void App::ui_update() {
         ImGui::Begin("Debug");
         ImGui::Text("Frame time: %f", elapsed_s);
         ImGui::Text("Frame Per Second: %f", 1.0f / elapsed_s);
+        ImGui::Text("CPU Frame count: %i", cpu_frame_count);
         ImGui::End();
     }
 
@@ -292,133 +236,24 @@ void App::render() {
         return;
     }
 
-    scene->update();
+    light_system->reload();
 
     daxa::CommandList cmd_list = device.create_command_list({ .debug_name = "main loop cmd list" });
-
-    glm::vec3 lightPos(-4.0f, 55.0f, -4.0f);
-    glm::mat4 lightProjection, lightView;
-    glm::mat4 lightSpaceMatrix;
-    float near_plane = -128.0f, far_plane = 128.0f;
-    //lightProjection = glm::perspective(glm::radians(45.0f), (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene
-    lightProjection = glm::ortho(near_plane, far_plane, near_plane, far_plane, near_plane, far_plane);
-    lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, -1.0, 0.0));
-    lightSpaceMatrix = lightProjection * lightView;
-
-    cmd_list.pipeline_barrier_image_transition({
-        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
-        .before_layout = daxa::ImageLayout::UNDEFINED,
-        .after_layout = daxa::ImageLayout::GENERAL,
-        .image_slice = {.image_aspect = daxa::ImageAspectFlagBits::DEPTH },
-        .image_id = shadow_depth_image,
-    });
-
-    cmd_list.pipeline_barrier_image_transition({
-        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
-        .before_layout = daxa::ImageLayout::UNDEFINED,
-        .after_layout = daxa::ImageLayout::GENERAL,
-        .image_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR },
-        .image_id = variance_shadow_image,
-    });
-
-    cmd_list.pipeline_barrier_image_transition({
-        .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
-        .before_layout = daxa::ImageLayout::UNDEFINED,
-        .after_layout = daxa::ImageLayout::GENERAL,
-        .image_slice = {.image_aspect = daxa::ImageAspectFlagBits::COLOR },
-        .image_id = temp_variance_shadow_image,
-    });
-
-    cmd_list.begin_renderpass({
-        .color_attachments = {
-            {
-                .image_view = variance_shadow_image.default_view(),
-                .load_op = daxa::AttachmentLoadOp::CLEAR,
-                .clear_value = std::array<f32, 4>{1.0f, 1.0f, 1.0f, 1.0f},
-            },
-        },
-        .depth_attachment = {{
-            .image_view = shadow_depth_image.default_view(),
-            .load_op = daxa::AttachmentLoadOp::CLEAR,
-            .clear_value = daxa::DepthValue{1.0f, 0},
-        }},
-        .render_area = {.x = 0, .y = 0, .width = shadow, .height = shadow},
-    });
-    cmd_list.set_pipeline(*shadow_pipeline);
-
-    ShadowPush c_push;
-    c_push.light_matrix = *reinterpret_cast<const f32mat4x4*>(&lightSpaceMatrix);
-
-    scene->iterate([&](Entity entity){
-        if(entity.has_component<ModelComponent>()) {
-            auto& model = entity.get_component<ModelComponent>().model;
-
-            c_push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
-            c_push.face_buffer = model->vertex_buffer_address;
-
-            model->bind_index_buffer(cmd_list);
-            cmd_list.push_constant(c_push);
-            /*cmd_list.set_depth_bias({
-                .constant_factor = 1.25f,
-                .clamp = 0.0f,
-                .slope_factor = 1.75f
-            });*/
-            model->draw(cmd_list);
-        }
-    });
-
-    cmd_list.end_renderpass();
-
-    cmd_list.begin_renderpass({
-        .color_attachments = {
-            {
-                .image_view = temp_variance_shadow_image.default_view(),
-                .load_op = daxa::AttachmentLoadOp::CLEAR,
-                .clear_value = std::array<f32, 4>{1.0f, 1.0f, 1.0f, 1.0f},
-            },
-        },
-        .render_area = {.x = 0, .y = 0, .width = shadow, .height = shadow},
-    });
-    cmd_list.set_pipeline(*filter_gauss_pipeline);
-
     
-    cmd_list.push_constant(GaussPush {
-        .src_texture = variance_shadow_image.default_view(),
-        .blur_scale = { 1.0f / static_cast<f32>(shadow), 0.0f }
-    });
-    cmd_list.draw({ .vertex_count = 3});
-
-    cmd_list.end_renderpass();
-
-    cmd_list.begin_renderpass({
-        .color_attachments = {
-            {
-                .image_view = variance_shadow_image.default_view(),
-                .load_op = daxa::AttachmentLoadOp::CLEAR,
-                .clear_value = std::array<f32, 4>{1.0f, 1.0f, 1.0f, 1.0f},
-            },
-        },
-        .render_area = {.x = 0, .y = 0, .width = shadow, .height = shadow},
-    });
-    cmd_list.set_pipeline(*filter_gauss_pipeline);
-
-    
-    cmd_list.push_constant(GaussPush {
-        .src_texture = temp_variance_shadow_image.default_view(),
-        .blur_scale = { 0.0f, 1.0f / static_cast<f32>(shadow) }
-    });
-    cmd_list.draw({ .vertex_count = 3});
-
-    cmd_list.end_renderpass();
+    scene->update(cmd_list);
+    light_system->update(cmd_list, shadow_sampler);
 
     {
         glm::mat4 view = camera.camera.get_view();
+        //glm::mat4 view = light_system->vie;
+        glm::mat4 proj = camera.camera.proj_mat;
+        //glm::mat4 proj = light_system->prj;
 
-        glm::mat4 temp_inverse_projection_mat = glm::inverse(camera.camera.proj_mat);
+        glm::mat4 temp_inverse_projection_mat = glm::inverse(proj);
         glm::mat4 temp_inverse_view_mat = glm::inverse(view);
 
         CameraInfo camera_info {
-            .projection_matrix = *reinterpret_cast<const f32mat4x4*>(&camera.camera.proj_mat),
+            .projection_matrix = *reinterpret_cast<const f32mat4x4*>(&proj),
             .inverse_projection_matrix = *reinterpret_cast<const f32mat4x4*>(&temp_inverse_projection_mat),
             .view_matrix = *reinterpret_cast<const f32mat4x4*>(&view),
             .inverse_view_matrix = *reinterpret_cast<const f32mat4x4*>(&temp_inverse_view_mat),
@@ -426,16 +261,6 @@ void App::render() {
             .near_plane = camera.camera.near_clip,
             .far_plane = camera.camera.far_clip
         };
-
-        /*CameraInfo camera_info {
-            .projection_matrix = *reinterpret_cast<const f32mat4x4*>(&lightProjection),
-            .inverse_projection_matrix = *reinterpret_cast<const f32mat4x4*>(&temp_inverse_projection_mat),
-            .view_matrix = *reinterpret_cast<const f32mat4x4*>(&lightView),
-            .inverse_view_matrix = *reinterpret_cast<const f32mat4x4*>(&temp_inverse_view_mat),
-            .position = *reinterpret_cast<const f32vec3*>(&camera.pos),
-            .near_plane = camera.camera.near_clip,
-            .far_plane = camera.camera.far_clip
-        };*/
 
         camera_buffer->update(cmd_list, camera_info);
     }
@@ -502,12 +327,6 @@ void App::render() {
         .render_area = {.x = 0, .y = 0, .width = size_x, .height = size_y},
     });
     cmd_list.set_pipeline(*deffered_pipeline);
-    /*cmd_list.set_scissor({
-        .x = 0,
-        .y = 0,
-        .width = size_x,
-        .height = size_y,
-    });*/
 
     DrawPush push;
     push.lights_buffer = scene->lights_buffer->buffer_address;
@@ -541,23 +360,13 @@ void App::render() {
     });
 
     cmd_list.set_pipeline(*composition_pipeline);
-    /*cmd_list.set_scissor({
-        .x = 0,
-        .y = 0,
-        .width = size_x,
-        .height = size_y,
-    });*/
-
     cmd_list.push_constant(CompositionPush {
-        .light_matrix = *reinterpret_cast<const f32mat4x4*>(&lightSpaceMatrix),
         .albedo = { .image_view_id = albedo_image.default_view(), .sampler_id = sampler },
         .normal = { .image_view_id = normal_image.default_view(), .sampler_id = sampler },
         .emissive = { .image_view_id = emissive_image.default_view(), .sampler_id = sampler },
         .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
         .ssao = { .image_view_id = ssao_renderer->ssao_blur_image.default_view(), .sampler_id = sampler },
-        //.shadow = { .image_view_id = shadow_depth_image.default_view(), .sampler_id = shadow_sampler },
-        .shadow = { .image_view_id = variance_shadow_image.default_view(), .sampler_id = shadow_sampler },
-        .lights_buffer = scene->lights_buffer->buffer_address,
+        .lights_buffer = light_system->lights_buffer->buffer_address,
         .camera_buffer = camera_buffer->buffer_address,
     });
     
@@ -587,6 +396,8 @@ void App::render() {
         .wait_binary_semaphores = {swapchain.get_present_semaphore()},
         .swapchain = swapchain,
     });
+
+    this->cpu_frame_count++;
 }
 
 void App::on_mouse_scroll(f32 x, f32 y) {}

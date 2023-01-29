@@ -2,16 +2,24 @@
 #define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
 #include <daxa/daxa.inl>
 
+#include "core.glsl"
+
 struct DirectionalLight {
     f32vec3 direction;
     f32vec3 color;
     f32 intensity;
+    TextureId shadow_image;
+    f32mat4x4 light_matrix;
+    int shadow_type;
 };
 
 struct PointLight {
     f32vec3 position;
     f32vec3 color;
     f32 intensity;
+    TextureId shadow_image;
+    f32mat4x4 light_matrix;
+    int shadow_type;
 };
 
 struct SpotLight {
@@ -20,7 +28,10 @@ struct SpotLight {
     f32vec3 color;
     f32 intensity;
     f32 cut_off;
-    f32 outer_cut_off;     
+    f32 outer_cut_off;
+    TextureId shadow_image;
+    f32mat4x4 light_matrix;
+    int shadow_type;
 };
 
 #if !defined(__cplusplus)
