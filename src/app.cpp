@@ -307,7 +307,7 @@ void App::render() {
             {
                 .image_view = this->albedo_image.default_view(),
                 .load_op = daxa::AttachmentLoadOp::CLEAR,
-                .clear_value = std::array<f32, 4>{0.3f, 0.2f, 0.8f, 1.0f},
+                .clear_value = std::array<f32, 4>{0.05f, 0.05f, 0.05f, 1.0f},
             },
             {
                 .image_view = this->normal_image.default_view(),

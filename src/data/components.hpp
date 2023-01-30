@@ -108,8 +108,8 @@ namespace dare {
         glm::vec3 direction = { 0.0f, -1.0f, 0.0f };
         glm::vec3 color = { 1.0f, 1.0f, 1.0f };
         f32 intensity = 32.0f;
-        f32 cut_off = 60.0f;
-        f32 outer_cut_off = 70.0f;
+        f32 cut_off = 20.0f;
+        f32 outer_cut_off = 30.0f;
         ShadowInfo shadow_info;
 
         SpotLightComponent() = default;

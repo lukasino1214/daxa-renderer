@@ -1,4 +1,5 @@
 #include "light_system.hpp"
+#include <glm/gtx/rotate_vector.hpp>
 
 namespace dare {
     LightSystem::LightSystem(std::shared_ptr<Scene> scene, daxa::Device& device, daxa::PipelineManager& pipeline_manager) : scene{scene}, device{device} {
@@ -97,8 +98,6 @@ namespace dare {
                     });
 
                     comp.shadow_info.type = ShadowType::PCF;
-
-                    std::cout << "Create shadow image for directional light" << std::endl;
                     comp.shadow_info.has_to_create = false;
                 }
 
@@ -111,7 +110,6 @@ namespace dare {
                         .usage = daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
                     });
 
-                    std::cout << "Resized shadow image for directional light" << std::endl;
                     comp.shadow_info.has_to_resize = false;
                 }
 
@@ -126,7 +124,6 @@ namespace dare {
                     comp.shadow_info.view = glm::lookAt(pos, look_pos, glm::vec3(0.0, -1.0, 0.0));
 
                     comp.shadow_info.has_moved = false;
-                    std::cout << "Moved shadow image for directional light" << std::endl;
                 }
             }
 
@@ -159,8 +156,6 @@ namespace dare {
                     });
 
                     comp.shadow_info.type = ShadowType::VARIANCE;
-
-                    std::cout << "Create shadow image for spot light" << std::endl;
                     comp.shadow_info.has_to_create = false;
                 }
 
@@ -189,18 +184,14 @@ namespace dare {
                         .usage = daxa::ImageUsageFlagBits::COLOR_ATTACHMENT | daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
                     });
 
-                    std::cout << "Resized shadow image for spot light" << std::endl;
                     comp.shadow_info.has_to_resize = false;
                 }
 
                 if(comp.shadow_info.has_moved) {
                     f32 clip_space = comp.shadow_info.clip_space;
-                    //comp.shadow_info.projection = glm::ortho(-clip_space, clip_space, -clip_space, clip_space, -clip_space, clip_space);
 
-                    comp.shadow_info.projection = glm::perspective(glm::radians(comp.outer_cut_off), 1.0f, 0.1f, 100.0f);
+                    comp.shadow_info.projection = glm::perspective(glm::radians(comp.outer_cut_off), 1.0f, 0.1f, clip_space);
                     comp.shadow_info.projection[1][1] *= -1.0f;
-
-                    prj = comp.shadow_info.projection;
 
                     glm::vec3 pos = entity.get_component<TransformComponent>().translation;
                     glm::vec3 dir = glm::normalize(entity.get_component<TransformComponent>().rotation);
@@ -208,10 +199,7 @@ namespace dare {
                     glm::vec3 look_pos = pos + dir;
                     comp.shadow_info.view = glm::lookAt(pos, look_pos, glm::vec3(0.0, 1.0, 0.0));
 
-                    vie = comp.shadow_info.view;
-
                     comp.shadow_info.has_moved = false;
-                    std::cout << "Moved shadow image for spot light" << std::endl;
                 }
             }
         });
@@ -226,7 +214,12 @@ namespace dare {
         scene->iterate([&](Entity entity) {
             if(entity.has_component<DirectionalLightComponent>()) {
                 auto& comp = entity.get_component<DirectionalLightComponent>();
-                glm::vec3 dir = glm::normalize(entity.get_component<TransformComponent>().rotation);
+                glm::vec3 rot = entity.get_component<TransformComponent>().rotation;
+                glm::vec3 dir = { 0.0f, -1.0f, 0.0f };
+                dir = glm::rotateX(dir, glm::radians(rot.x));
+                dir = glm::rotateY(dir, glm::radians(rot.y));
+                dir = glm::rotateZ(dir, glm::radians(rot.z));
+
                 glm::vec3 col = comp.color;
                 info.directional_lights[info.num_directional_lights].direction = *reinterpret_cast<const f32vec3 *>(&dir);
                 info.directional_lights[info.num_directional_lights].color = *reinterpret_cast<const f32vec3 *>(&col);
@@ -257,8 +250,14 @@ namespace dare {
 
             if(entity.has_component<SpotLightComponent>()) {
                 auto& comp = entity.get_component<SpotLightComponent>();
+
                 glm::vec3 pos = entity.get_component<TransformComponent>().translation;
-                glm::vec3 dir = glm::normalize(entity.get_component<TransformComponent>().rotation);
+                glm::vec3 rot = entity.get_component<TransformComponent>().rotation;
+                glm::vec3 dir = { 0.0f, -1.0f, 0.0f };
+                dir = glm::rotateX(dir, glm::radians(rot.x));
+                dir = glm::rotateY(dir, glm::radians(rot.y));
+                dir = glm::rotateZ(dir, glm::radians(rot.z));
+
                 glm::vec3 col = comp.color;
                 info.spot_lights[info.num_spot_lights].position = *reinterpret_cast<const f32vec3 *>(&pos);
                 info.spot_lights[info.num_spot_lights].direction = *reinterpret_cast<const f32vec3 *>(&dir);
