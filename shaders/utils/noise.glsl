@@ -1,31 +1,31 @@
 #pragma once
 
-float rand(vec2 c) {
-	return fract(sin(dot(c.xy, vec2(12.9898, 78.233))) * 43758.5453);
+f32 rand(f32vec2 c) {
+	return fract(sin(dot(c.xy, f32vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-float noise(vec2 p, float freq) {
-	float unit = 2560 / freq;
-	vec2 ij = floor(p / unit);
-	vec2 xy = mod(p, unit) / unit;
+f32 noise(f32vec2 p, f32 freq) {
+	f32 unit = 2560 / freq;
+	f32vec2 ij = floor(p / unit);
+	f32vec2 xy = mod(p, unit) / unit;
 	xy = .5 * (1. - cos(3.14159265359 * xy));
-	float a = rand((ij + vec2(0., 0.)));
-	float b = rand((ij + vec2(1., 0.)));
-	float c = rand((ij + vec2(0., 1.)));
-	float d = rand((ij + vec2(1., 1.)));
-	float x1 = mix(a, b, xy.x);
-	float x2 = mix(c, d, xy.x);
+	f32 a = rand((ij + f32vec2(0., 0.)));
+	f32 b = rand((ij + f32vec2(1., 0.)));
+	f32 c = rand((ij + f32vec2(0., 1.)));
+	f32 d = rand((ij + f32vec2(1., 1.)));
+	f32 x1 = mix(a, b, xy.x);
+	f32 x2 = mix(c, d, xy.x);
 	return mix(x1, x2, xy.y);
 }
 
-float pNoise(vec2 p, int res) {
-	float persistance = .5;
-	float n = 0.;
-	float normK = 0.;
-	float f = 4.;
-	float amp = 1.;
-	int iCount = 0;
-	for (int i = 0; i < 50; i++) {
+f32 pNoise(f32vec2 p, i32 res) {
+	f32 persistance = .5;
+	f32 n = 0.;
+	f32 normK = 0.;
+	f32 f = 4.;
+	f32 amp = 1.;
+	i32 iCount = 0;
+	for (i32 i = 0; i < 50; i++) {
 		n += amp * noise(p, f);
 		f *= 2.;
 		normK += amp;
@@ -33,6 +33,6 @@ float pNoise(vec2 p, int res) {
 		if (iCount == res) break;
 		iCount++;
 	}
-	float nf = n / normK;
+	f32 nf = n / normK;
 	return nf * nf * nf * nf;
 }

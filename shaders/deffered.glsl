@@ -16,9 +16,9 @@ layout(location = 4) out f32vec3 out_tangent;
 layout(location = 5) out f32vec3 out_bittangent;
 
 void main() {
-    gl_Position = CAMERA.projection_matrix * CAMERA.view_matrix * OBJECT.model_matrix * vec4(VERTEX.position.xyz, 1.0);
+    gl_Position = CAMERA.projection_matrix * CAMERA.view_matrix * OBJECT.model_matrix * f32vec4(VERTEX.position.xyz, 1.0);
     out_uv = VERTEX.uv;
-    out_position = (OBJECT.model_matrix * vec4(VERTEX.position.xyz, 1.0)).rgb;
+    out_position = (OBJECT.model_matrix * f32vec4(VERTEX.position.xyz, 1.0)).rgb;
     out_camera_position = CAMERA.position;
 
     out_normal = normalize(f32mat3x3(OBJECT.normal_matrix) * VERTEX.normal.xyz);
@@ -41,18 +41,18 @@ layout(location = 3) in f32vec3 in_normal;
 layout(location = 4) in f32vec3 in_tangent;
 layout(location = 5) in f32vec3 in_bittangent;
 
-vec3 getNormalFromMap(TextureId normal_map) {
-    vec3 tangentNormal = sample_texture(normal_map, in_uv).xyz * 2.0 - 1.0;
+f32vec3 getNormalFromMap(TextureId normal_map) {
+    f32vec3 tangentNormal = sample_texture(normal_map, in_uv).xyz * 2.0 - 1.0;
 
-    vec3 Q1  = dFdx(in_position);
-    vec3 Q2  = dFdy(in_position);
-    vec2 st1 = dFdx(in_uv);
-    vec2 st2 = dFdy(in_uv);
+    f32vec3 Q1  = dFdx(in_position);
+    f32vec3 Q2  = dFdy(in_position);
+    f32vec2 st1 = dFdx(in_uv);
+    f32vec2 st2 = dFdy(in_uv);
 
-    vec3 N   = normalize(in_normal);
+    f32vec3 N   = normalize(in_normal);
 
-    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B  = normalize(cross(N, T));
+    f32vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
+    f32vec3 B  = normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
 
     return normalize(TBN * tangentNormal);
@@ -77,7 +77,7 @@ void main() {
     out_albedo = color;
     out_albedo.rgb += emissive;
 
-    out_emissive = vec4(emissive, 1);
+    out_emissive = f32vec4(emissive, 1);
 }
 
 #endif

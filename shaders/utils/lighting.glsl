@@ -11,7 +11,7 @@ struct DirectionalLight {
     f32 intensity;
     TextureId shadow_image;
     f32mat4x4 light_matrix;
-    int shadow_type;
+    i32 shadow_type;
 };
 
 struct PointLight {
@@ -20,7 +20,7 @@ struct PointLight {
     f32 intensity;
     TextureId shadow_image;
     f32mat4x4 light_matrix;
-    int shadow_type;
+    i32 shadow_type;
 };
 
 struct SpotLight {
@@ -32,7 +32,7 @@ struct SpotLight {
     f32 outer_cut_off;
     TextureId shadow_image;
     f32mat4x4 light_matrix;
-    int shadow_type;
+    i32 shadow_type;
 };
 
 
