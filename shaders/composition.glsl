@@ -28,7 +28,7 @@ float linstep(float low, float high, float v) {
 }
 
 float normal_shadow(TextureId shadow_image, vec4 shadow_coord, vec2 off) {
-    vec2 proj_coord = shadow_coord.xy * 0.5 + 0.5;
+    vec3 proj_coord = shadow_coord.xyz * 0.5 + 0.5;
 	return max(sample_shadow(shadow_image, proj_coord.xy + off, shadow_coord.z - 0.005).r, 0.1);
 }
 
@@ -65,7 +65,7 @@ float variance_shadow(TextureId shadow_image, vec4 shadow_coord) {
 }
 
 float calculate_shadow(f32vec4 position) {
-    f32 shadow_factor = 1.0f;
+    f32 shadow_factor = 0.0f;
 
     for(uint i = 0; i < LIGHTS.num_directional_lights; i++) {
         int type = LIGHTS.directional_lights[i].shadow_type;
@@ -73,11 +73,11 @@ float calculate_shadow(f32vec4 position) {
         if(type == 0) { continue; }
         if(type == 1) {
             f32 shadow = shadow_pcf(LIGHTS.directional_lights[i].shadow_image, shadow_coord / shadow_coord.w);
-            if(shadow < shadow_factor) { shadow_factor = shadow; }
+            if(shadow > shadow_factor) { shadow_factor = shadow; }
         }
         if(type == 2) {
             f32 shadow = variance_shadow(LIGHTS.directional_lights[i].shadow_image, shadow_coord / shadow_coord.w);
-            if(shadow < shadow_factor) { shadow_factor = shadow; }
+            if(shadow > shadow_factor) { shadow_factor = shadow; }
         }
     }
 
@@ -87,11 +87,11 @@ float calculate_shadow(f32vec4 position) {
         if(type == 0) { continue; }
         if(type == 1) {
             f32 shadow = shadow_pcf(LIGHTS.point_lights[i].shadow_image, shadow_coord / shadow_coord.w);
-            if(shadow < shadow_factor) { shadow_factor = shadow; }
+            if(shadow > shadow_factor) { shadow_factor = shadow; }
         }
         if(type == 2) {
             f32 shadow = variance_shadow(LIGHTS.point_lights[i].shadow_image, shadow_coord / shadow_coord.w);
-            if(shadow < shadow_factor) { shadow_factor = shadow; }
+            if(shadow > shadow_factor) { shadow_factor = shadow; }
         }
     }
 

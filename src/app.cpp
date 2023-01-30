@@ -138,6 +138,7 @@ App::App() : AppWindow<App>("daxa-renderer")  {
         .compare_op = daxa::CompareOp::LESS,
         .min_lod = 0.0f,
         .max_lod = static_cast<f32>(1),
+        .border_color = daxa::BorderColor::FLOAT_OPAQUE_WHITE,
         .enable_unnormalized_coordinates = false,
     });
 
