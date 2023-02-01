@@ -6,6 +6,7 @@
 
 #define SHADOW 0.05
 
+#if !defined(__cplusplus)
 f32 linstep(f32 low, f32 high, f32 v) {
     return clamp((v-low)/(high-low), 0.0, 1.0);
 }
@@ -46,3 +47,17 @@ f32 variance_shadow(TextureId shadow_image, f32vec4 shadow_coord) {
 
     return max(max(p, pMax), SHADOW);
 }
+
+// NOT WORKING I HAVE TO FIGURE IT OUT
+f32 variance_shadow_point(TextureCubeId shadow_image, f32vec3 shadow_coord, f32 far_plane) {
+    f32vec2 moments = sample_cube_texture(shadow_image, shadow_coord).xy;
+	f32 z = length(shadow_coord) / far_plane;
+    f32 p = step(z, moments.x);
+    f32 variance = max(moments.y - moments.x * moments.x, 0.00002);
+	f32 d = z - moments.x;
+	f32 pMax = linstep(0.1, 1.0, variance / (variance + d*d));
+
+    return max(max(p, pMax), SHADOW);
+}
+
+#endif

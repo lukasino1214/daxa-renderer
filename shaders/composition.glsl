@@ -41,7 +41,7 @@ void main() {
     }
 
     for(uint i = 0; i < LIGHTS.num_point_lights; i++) {
-        ambient += calculate_point_light(LIGHTS.point_lights[i], ambient.rgb, normal.xyz, position, camera_position);
+        ambient += calculate_point_light(LIGHTS.point_lights[i], ambient.rgb, normal.xyz, position, camera_position, CAMERA.far_plane);
     }
 
     for(uint i = 0; i < LIGHTS.num_spot_lights; i++) {

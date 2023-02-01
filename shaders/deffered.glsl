@@ -12,8 +12,6 @@ layout(location = 0) out f32vec2 out_uv;
 layout(location = 1) out f32vec3 out_position;
 layout(location = 2) out f32vec3 out_camera_position;
 layout(location = 3) out f32vec3 out_normal;
-layout(location = 4) out f32vec3 out_tangent;
-layout(location = 5) out f32vec3 out_bittangent;
 
 void main() {
     gl_Position = CAMERA.projection_matrix * CAMERA.view_matrix * OBJECT.model_matrix * f32vec4(VERTEX.position.xyz, 1.0);
@@ -22,10 +20,6 @@ void main() {
     out_camera_position = CAMERA.position;
 
     out_normal = normalize(f32mat3x3(OBJECT.normal_matrix) * VERTEX.normal.xyz);
-    out_tangent = normalize(f32mat3x3(OBJECT.normal_matrix) * VERTEX.tangent.xyz);
-    out_bittangent = normalize(cross(out_normal, out_tangent) * VERTEX.tangent.w);
-    //out_tbn = f32mat3x3(tangent, bittangent, normal);
-    //out_normal = normal;
 }
 
 #elif defined(DRAW_FRAG)
@@ -38,11 +32,9 @@ layout(location = 0) in f32vec2 in_uv;
 layout(location = 1) in f32vec3 in_position;
 layout(location = 2) in f32vec3 in_camera_position;
 layout(location = 3) in f32vec3 in_normal;
-layout(location = 4) in f32vec3 in_tangent;
-layout(location = 5) in f32vec3 in_bittangent;
 
 f32vec3 getNormalFromMap(TextureId normal_map) {
-    f32vec3 tangentNormal = sample_texture(normal_map, in_uv).xyz * 2.0 - 1.0;
+    f32vec3 tangent_normal = sample_texture(normal_map, in_uv).xyz * 2.0 - 1.0;
 
     f32vec3 Q1  = dFdx(in_position);
     f32vec3 Q2  = dFdy(in_position);
@@ -55,7 +47,7 @@ f32vec3 getNormalFromMap(TextureId normal_map) {
     f32vec3 B  = normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
 
-    return normalize(TBN * tangentNormal);
+    return normalize(TBN * tangent_normal);
 }
 
 

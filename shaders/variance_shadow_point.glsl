@@ -13,13 +13,22 @@ DAXA_USE_PUSH_CONSTANT(ShadowPush)
 #define LIGHTS deref(daxa_push_constant.lights_buffer)
 
 #if defined(DRAW_VERT)
+layout(location = 0) out f32vec4 out_position;
+
 void main() {
-    gl_Position = daxa_push_constant.light_matrix * OBJECT.model_matrix * f32vec4(VERTEX.position, 1.0);
+    out_position = OBJECT.model_matrix * f32vec4(VERTEX.position, 1.0);
+    gl_Position = daxa_push_constant.light_matrix * out_position;
 }
 #elif defined(DRAW_FRAG)
 layout(location = 0) out f32vec2 out_color;
+
+layout(location = 0) in f32vec4 in_position;
 void main() {
-    f32 depth = gl_FragCoord.z;
+    f32 dist = length(in_position.xyz - daxa_push_constant.light_position);
+    dist /= daxa_push_constant.far_plane;
+    
+    gl_FragDepth = dist;
+    f32 depth = dist;
 
     f32 dx = dFdx(depth);
     f32 dy = dFdy(depth);

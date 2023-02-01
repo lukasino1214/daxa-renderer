@@ -104,6 +104,8 @@ struct ShadowPush {
     f32mat4x4 light_matrix;
     daxa_RWBufferPtr(DrawVertex) face_buffer;
     daxa_RWBufferPtr(ObjectInfo) object_buffer;
+    f32vec3 light_position;
+    f32 far_plane;
 };
 
 struct GaussPush {

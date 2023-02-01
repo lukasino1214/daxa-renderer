@@ -18,8 +18,7 @@ struct PointLight {
     f32vec3 position;
     f32vec3 color;
     f32 intensity;
-    TextureId shadow_image;
-    f32mat4x4 light_matrix;
+    TextureCubeId shadow_image;
     i32 shadow_type;
 };
 
@@ -61,18 +60,14 @@ f32vec3 calculate_directional_light(DirectionalLight light, f32vec3 frag_color, 
     return frag_color * light.color * ((diffuse + exp(exponent)) * shadow) * light.intensity;
 }
 
-f32vec3 calculate_point_light(PointLight light, f32vec3 frag_color, f32vec3 normal, f32vec4 position, f32vec3 camera_position) {
-    f32vec4 shadow_coord = light.light_matrix * position;
+f32vec3 calculate_point_light(PointLight light, f32vec3 frag_color, f32vec3 normal, f32vec4 position, f32vec3 camera_position, f32 far_plane) {
     f32 shadow = 1.0;
     f32vec3 frag_position = position.xyz;
     f32vec3 light_dir = normalize(light.position - frag_position);
-    f32 bias = max(0.05 * (1.0 - dot(normal, light_dir)), 0.005); 
 
-    if(light.shadow_type == 1) {
-        shadow = shadow_pcf(light.shadow_image, shadow_coord / shadow_coord.w, bias);
-    } else if(light.shadow_type == 2) {
-        shadow = variance_shadow(light.shadow_image, shadow_coord / shadow_coord.w);
-    }
+    /*if(light.shadow_type == 2) {
+        shadow = variance_shadow_point(light.shadow_image, position.xyz - light.position, far_plane);
+    }*/
     
     f32 distance = length(light.position.xyz - frag_position);
     f32 attenuation = 1.0f / (distance * distance);

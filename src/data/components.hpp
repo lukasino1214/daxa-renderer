@@ -85,6 +85,27 @@ namespace dare {
         ShadowType type = ShadowType::NONE;
     };
 
+    struct ShadowFace {
+        glm::mat4 view;
+        daxa::ImageViewId shadow_image_view;
+    };
+
+    struct ShadowInfoPointLight {
+        glm::mat4 projection;
+        std::array<ShadowFace, 6> shadow_faces;
+        daxa::ImageId depth_image;
+        daxa::ImageId shadow_image;
+        daxa::ImageViewId shadow_image_view;
+        daxa::ImageId temp_shadow_image;
+        bool has_to_create = true;
+        bool has_moved = true;
+        bool has_to_resize = false;
+        glm::ivec2 image_size = {1024, 1024};
+        f32 clip_space = 128.0f;
+        i32 update_time = 250;
+        ShadowType type = ShadowType::NONE;
+    };
+
     struct DirectionalLightComponent {
         glm::vec3 direction = { 0.0f, -1.0f, 0.0f };
         glm::vec3 color = { 1.0f, 1.0f, 1.0f };
@@ -98,7 +119,7 @@ namespace dare {
     struct PointLightComponent {
         glm::vec3 color = { 1.0f, 1.0f, 1.0f };
         f32 intensity = 32.0f;
-        ShadowInfo shadow_info;
+        ShadowInfoPointLight shadow_info;
 
         PointLightComponent() = default;
         PointLightComponent(const PointLightComponent&) = default;

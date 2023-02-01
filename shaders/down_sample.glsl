@@ -18,22 +18,19 @@ layout(location = 0) in f32vec2 in_uv;
 
 layout (location = 0) out f32vec4 out_emissive;
 
-f32vec3 PowVec3(f32vec3 v, f32 p)
-{
+f32vec3 PowVec3(f32vec3 v, f32 p) {
     return f32vec3(pow(v.x, p), pow(v.y, p), pow(v.z, p));
 }
 
 const f32 invGamma = 1.0 / 2.2;
 f32vec3 ToSRGB(f32vec3 v)   { return PowVec3(v, invGamma); }
 
-f32 sRGBToLuma(f32vec3 col)
-{
+f32 sRGBToLuma(f32vec3 col) {
     //return dot(col, f32vec3(0.2126f, 0.7152f, 0.0722f));
 	return dot(col, f32vec3(0.299f, 0.587f, 0.114f));
 }
 
-f32 KarisAverage(f32vec3 col)
-{
+f32 KarisAverage(f32vec3 col) {
 	// Formula is 1 / (1 + luma)
 	f32 luma = sRGBToLuma(ToSRGB(col)) * 0.25f;
 	return 1.0f / (1.0f + luma);
