@@ -1,4 +1,5 @@
 #include "model.hpp"
+#include <daxa/command_list.hpp>
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -11,10 +12,11 @@
 #include <fastgltf_types.hpp>
 #include <fastgltf_parser.hpp>
 
-//#include "../utils/threadpool.hpp"
+#include "../utils/threadpool.hpp"
 
 namespace dare {
     Model::Model(daxa::Device device, const std::string& path) : device{device}, path{path} {
+        std::cout << "Loading model: " << path << std::endl;
         auto timer = std::chrono::system_clock::now();
         std::vector<DrawVertex> vertices{};
         std::vector<u32> indices{};
@@ -66,14 +68,16 @@ namespace dare {
         };
 
         images.resize(asset->images.size());
-        //ThreadPool pool(std::thread::hardware_concurrency() - 1);
+        std::vector<std::pair<std::pair<std::unique_ptr<Texture>, daxa::CommandList>, u32>> textures;
+        textures.resize(asset->images.size());
+        ThreadPool pool(std::thread::hardware_concurrency());
 
         auto process_image = [&](fastgltf::Image& image, u32 index) {
-            std::unique_ptr<Texture> tex;
+            std::pair<std::unique_ptr<Texture>, daxa::CommandList> tex;
             switch (image.location) {
                 case fastgltf::DataLocation::FilePathWithByteRange: {
                     auto path = image.data.path.string();
-                    tex = std::make_unique<Texture>(device, path);
+                    //tex = std::make_unique<Texture>(device, path);
                     break;
                 }
                 case fastgltf::DataLocation::VectorWithMime: {
@@ -101,12 +105,14 @@ namespace dare {
                             rgb += 3;
                         }
 
-                        tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
+                        //tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
+                        tex = Texture::load_texture(device, width, height, buffer, get_image_type(index));
                     }
                     else {
                         buffer = data;
                         buffer_size = width * height * 4;
-                        tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
+                        //tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
+                        tex = Texture::load_texture(device, width, height, buffer, get_image_type(index));
                     }
 
                     stbi_image_free(data);
@@ -146,7 +152,8 @@ namespace dare {
                                 buffer_size = width * height * 4;
                             }
 
-                            tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
+                            tex = Texture::load_texture(device, width, height, buffer, get_image_type(index));
+                            //tex = std::make_unique<Texture>(device, width, height, buffer, get_image_type(index));
                             stbi_image_free(data);
                             break;
                         }
@@ -157,19 +164,34 @@ namespace dare {
                     break;
                 }
             }
-            images[index] = std::move(tex);
+
+            textures[index] = std::pair{std::move(tex), index};
         };
 
+        auto texture_timer = std::chrono::system_clock::now();
         for (u32 i = 0; i < asset->images.size(); i++) {
             auto& image = asset->images[i];
-            process_image(image, i);
-            //pool.push_task(process_image, image, i);
+            pool.push_task(process_image, image, i);
         }
 
-        //pool.wait_for_tasks();
+        pool.wait_for_tasks();
+
+        for(auto& tex : textures) {
+            device.submit_commands({
+                .command_lists = {std::move(tex.first.second)},
+            });
+
+            images[tex.second] = std::move(tex.first.first);
+        }
+
+        device.wait_idle();
+
+        std::cout << "- textures loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - texture_timer).count() << " ms!" << std::endl;
+
 
         default_texture = std::make_unique<Texture>(device, "assets/textures/white.png");
 
+        auto material_timer = std::chrono::system_clock::now();
         for (auto& material : asset->materials) {
             MaterialInfo material_info {};
 
@@ -275,6 +297,9 @@ namespace dare {
             material_infos.push_back(std::move(material_info));
         }
 
+        std::cout << "- materials loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - material_timer).count() << " ms!" << std::endl;
+
+        auto vertices_timer = std::chrono::system_clock::now();
         for(auto& scene : asset->scenes) {
             for (usize i = 0; i < scene.nodeIndices.size(); i++) {
                 auto & node = asset->nodes[i];
@@ -315,6 +340,7 @@ namespace dare {
                         tangentsBuffer = reinterpret_cast<const float*>(&(asset->buffers[view.bufferIndex].data.bytes[accessor.byteOffset + view.byteOffset]));
                     }
 
+                    vertices.reserve((vertices.size() + vertexCount) * sizeof(DrawVertex));
                     for (size_t v = 0; v < vertexCount; v++) {
                         glm::vec3 temp_position = glm::make_vec3(&positionBuffer[v * 3]);
                         glm::vec3 temp_normal = glm::make_vec3(&normalBuffer[v * 3]);
@@ -327,7 +353,7 @@ namespace dare {
                             .tangent = {temp_tangent.x, temp_tangent.y, temp_tangent.z, temp_tangent.w}
                         };
 
-                        vertices.push_back(vertex);
+                        vertices.emplace_back(std::move(vertex));
                     }
 
                     {
@@ -340,6 +366,7 @@ namespace dare {
                         switch(accessor.componentType) {
                             case fastgltf::ComponentType::UnsignedInt: {
                                 const uint32_t * buf = reinterpret_cast<const uint32_t *>(&buffer.data.bytes[accessor.byteOffset + bufferView.byteOffset]);
+                                indices.reserve((indices.size() + accessor.count) * sizeof(uint32_t));
                                 for (size_t index = 0; index < accessor.count; index++) {
                                     indices.push_back(buf[index]);
                                 }
@@ -347,6 +374,7 @@ namespace dare {
                             }
                             case fastgltf::ComponentType::UnsignedShort: {
                                 const uint16_t * buf = reinterpret_cast<const uint16_t *>(&buffer.data.bytes[accessor.byteOffset + bufferView.byteOffset]);
+                                indices.reserve((indices.size() + accessor.count) * sizeof(uint16_t));
                                 for (size_t index = 0; index < accessor.count; index++) {
                                     indices.push_back(buf[index]);
                                 }
@@ -354,6 +382,7 @@ namespace dare {
                             }
                             case fastgltf::ComponentType::UnsignedByte: {
                                 const uint8_t * buf = reinterpret_cast<const uint8_t *>(&buffer.data.bytes[accessor.byteOffset + bufferView.byteOffset]);
+                                indices.reserve((indices.size() + accessor.count) * sizeof(uint8_t));
                                 for (size_t index = 0; index < accessor.count; index++) {
                                     indices.push_back(buf[index]);
                                 }
@@ -383,84 +412,59 @@ namespace dare {
             .debug_name = "vertex_buffer",
         });
 
+        auto vertex_staging_buffer = device.create_buffer({
+            .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+            .size = static_cast<u32>(sizeof(DrawVertex) * vertices.size()),
+            .debug_name = "vertex_staging_buffer",
+        });
+
         index_buffer = device.create_buffer(daxa::BufferInfo{
             .size = static_cast<u32>(sizeof(u32) * indices.size()),
             .debug_name = "index_buffer",
         });
 
+        auto index_staging_buffer = device.create_buffer({
+            .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+            .size = static_cast<u32>(sizeof(u32) * indices.size()),
+            .debug_name = "index_staging_buffer",
+        });
+
         {
-            auto cmd_list = device.create_command_list({
-                .debug_name = "cmd_list",
-            });
-
-            auto vertex_staging_buffer = device.create_buffer({
-                .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                .size = static_cast<u32>(sizeof(DrawVertex) * vertices.size()),
-                .debug_name = "vertex_staging_buffer",
-            });
-            cmd_list.destroy_buffer_deferred(vertex_staging_buffer);
-
             auto buffer_ptr = device.get_host_address_as<DrawVertex>(vertex_staging_buffer);
             std::memcpy(buffer_ptr, vertices.data(), vertices.size() * sizeof(DrawVertex));
-
-            cmd_list.pipeline_barrier({
-                .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
-                .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
-            });
-
-            cmd_list.copy_buffer_to_buffer({
-                .src_buffer = vertex_staging_buffer,
-                .dst_buffer = vertex_buffer,
-                .size = static_cast<u32>(sizeof(DrawVertex) * vertices.size()),
-            });
-
-            cmd_list.pipeline_barrier({
-                .awaited_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
-                .waiting_pipeline_access = daxa::AccessConsts::VERTEX_SHADER_READ,
-            });
-            cmd_list.complete();
-            device.submit_commands({
-                .command_lists = {std::move(cmd_list)},
-            });
         }
 
         {
-            auto cmd_list = device.create_command_list({
-                .debug_name = "cmd_list",
-            });
-
-            auto index_staging_buffer = device.create_buffer({
-                .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
-                .size = static_cast<u32>(sizeof(u32) * indices.size()),
-                .debug_name = "index_staging_buffer",
-            });
-            cmd_list.destroy_buffer_deferred(index_staging_buffer);
-
             auto buffer_ptr = device.get_host_address_as<u32>(index_staging_buffer);
             std::memcpy(buffer_ptr, indices.data(), indices.size() * sizeof(u32));
-
-            cmd_list.pipeline_barrier({
-                .awaited_pipeline_access = daxa::AccessConsts::HOST_WRITE,
-                .waiting_pipeline_access = daxa::AccessConsts::TRANSFER_READ,
-            });
-
-            cmd_list.copy_buffer_to_buffer({
-                .src_buffer = index_staging_buffer,
-                .dst_buffer = index_buffer,
-                .size = static_cast<u32>(sizeof(u32) * indices.size()),
-            });
-
-            cmd_list.pipeline_barrier({
-                .awaited_pipeline_access = daxa::AccessConsts::TRANSFER_WRITE,
-                .waiting_pipeline_access = daxa::AccessConsts::VERTEX_SHADER_READ,
-            });
-            cmd_list.complete();
-            device.submit_commands({
-                .command_lists = {std::move(cmd_list)},
-            });
         }
 
-        std::cout << path << " loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() << " ms!" << std::endl;
+        auto cmd_list = device.create_command_list({
+            .debug_name = "cmd_list",
+        });
+
+        cmd_list.copy_buffer_to_buffer({
+            .src_buffer = vertex_staging_buffer,
+            .dst_buffer = vertex_buffer,
+            .size = static_cast<u32>(sizeof(DrawVertex) * vertices.size()),
+        });
+
+        cmd_list.copy_buffer_to_buffer({
+            .src_buffer = index_staging_buffer,
+            .dst_buffer = index_buffer,
+            .size = static_cast<u32>(sizeof(u32) * indices.size()),
+        });
+
+        cmd_list.destroy_buffer_deferred(vertex_staging_buffer);
+        cmd_list.destroy_buffer_deferred(index_staging_buffer);
+        cmd_list.complete();
+        device.submit_commands({
+            .command_lists = {std::move(cmd_list)},
+        });
+
+        std::cout << "- vertex and index buffer loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - vertices_timer).count() << " ms!" << std::endl;
+
+        std::cout << "loaded in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timer).count() << " ms!" << std::endl;
         vertex_buffer_address = device.get_device_address(vertex_buffer);
     }
 
