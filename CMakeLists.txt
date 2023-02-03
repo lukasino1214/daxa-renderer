@@ -43,8 +43,10 @@ add_executable(${PROJECT_NAME}
     "src/rendering/bloom_renderer.cpp"
     "src/rendering/ssao_renderer.cpp"
     "src/utils/threadpool.hpp"
-    "src/systems/light_system.cpp"
-    "src/systems/light_system.hpp"
+    "src/manager/light_manager.cpp"
+    "src/manager/light_manager.hpp"
+    "src/manager/model_manager.cpp"
+    "src/manager/model_manager.hpp"
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE daxa::daxa glm::glm glfw stb_interface fastgltf yaml-cpp EnTT::EnTT imgui::imgui)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)

@@ -153,7 +153,7 @@ namespace dare {
         fout << out.c_str();
     }
 
-    std::shared_ptr<Scene> SceneSerializer::deserialize(daxa::Device& device, const std::string& file_path) {
+    std::shared_ptr<Scene> SceneSerializer::deserialize(const std::shared_ptr<ModelManager>& model_manager, const std::string& file_path) {
         YAML::Node data;
         try {
             data = YAML::LoadFile(file_path);
@@ -165,7 +165,7 @@ namespace dare {
         if (!data["Scene"])
             throw std::runtime_error("Couldn't load scene");
 
-        auto scene = std::make_shared<Scene>(device);
+        auto scene = std::make_shared<Scene>(model_manager->device);
 
         auto scene_name = data["Scene"].as<std::string>();
         auto entities = data["Entities"];
@@ -190,7 +190,9 @@ namespace dare {
 
                 auto model_component = entity["ModelComponent"];
                 if(model_component) {
-                    auto model = std::make_shared<Model>(device, model_component["Path"].as<std::string>());
+                    //auto model = std::make_shared<Model>(device, model_component["Path"].as<std::string>());
+                    std::shared_ptr<Model> model = model_manager->load_model(model_component["Path"].as<std::string>());
+                    model->model_manager = model_manager;
                     deserialized_entity.add_component<ModelComponent>(model);
                 }
 

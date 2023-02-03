@@ -1,8 +1,8 @@
-#include "light_system.hpp"
+#include "light_manager.hpp"
 #include <glm/gtx/rotate_vector.hpp>
 
 namespace dare {
-    LightSystem::LightSystem(std::shared_ptr<Scene> scene, daxa::Device& device, daxa::PipelineManager& pipeline_manager) : scene{scene}, device{device} {
+    LightManager::LightManager(std::shared_ptr<Scene> scene, daxa::Device& device, daxa::PipelineManager& pipeline_manager) : scene{scene}, device{device} {
         lights_buffer = std::make_unique<Buffer<LightsInfo>>(device);
 
         this->normal_shadow_pipeline = pipeline_manager.add_raster_pipeline({
@@ -72,7 +72,7 @@ namespace dare {
 
     }
 
-    LightSystem::~LightSystem() {
+    LightManager::~LightManager() {
         scene->iterate([&](Entity entity) {
             if(entity.has_component<DirectionalLightComponent>()) {
                 auto& comp = entity.get_component<DirectionalLightComponent>();
@@ -114,7 +114,7 @@ namespace dare {
         });
     }
 
-    void LightSystem::reload() {
+    void LightManager::reload() {
         scene->iterate([&](Entity entity) {
             if(entity.has_component<DirectionalLightComponent>()) {
                 auto& comp = entity.get_component<DirectionalLightComponent>();
@@ -384,7 +384,7 @@ namespace dare {
         });
     }
 
-    void LightSystem::update(daxa::CommandList& cmd_list, daxa::SamplerId& sampler) {
+    void LightManager::update(daxa::CommandList& cmd_list, daxa::SamplerId& sampler) {
         LightsInfo info;
         info.num_directional_lights = 0;
         info.num_point_lights = 0;
@@ -471,7 +471,7 @@ namespace dare {
         lights_buffer->update(cmd_list, info);
     }
 
-    void LightSystem::render_normal_shadow_map(daxa::CommandList& cmd_list, const glm::mat4& vp, glm::ivec2 size, daxa::ImageId depth_image) {
+    void LightManager::render_normal_shadow_map(daxa::CommandList& cmd_list, const glm::mat4& vp, glm::ivec2 size, daxa::ImageId depth_image) {
         u32 size_x = static_cast<u32>(size.x);
         u32 size_y = static_cast<u32>(size.y);
         
@@ -503,7 +503,6 @@ namespace dare {
                 push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
                 push.face_buffer = model->vertex_buffer_address;
 
-                model->bind_index_buffer(cmd_list);
                 cmd_list.push_constant(push);
                 model->draw(cmd_list);
             }
@@ -512,7 +511,7 @@ namespace dare {
         cmd_list.end_renderpass();
     }
 
-    void LightSystem::render_variance_shadow_map(daxa::CommandList& cmd_list, const glm::mat4& vp, glm::ivec2 size, daxa::ImageId depth_image, daxa::ImageId temp_image, daxa::ImageId variance_image) {
+    void LightManager::render_variance_shadow_map(daxa::CommandList& cmd_list, const glm::mat4& vp, glm::ivec2 size, daxa::ImageId depth_image, daxa::ImageId temp_image, daxa::ImageId variance_image) {
         u32 size_x = static_cast<u32>(size.x);
         u32 size_y = static_cast<u32>(size.y);
         
@@ -567,7 +566,6 @@ namespace dare {
                 push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
                 push.face_buffer = model->vertex_buffer_address;
 
-                model->bind_index_buffer(cmd_list);
                 cmd_list.push_constant(push);
                 model->draw(cmd_list);
             }
@@ -618,7 +616,7 @@ namespace dare {
         cmd_list.end_renderpass();
     }
 
-    void LightSystem::render_variance_shadow_map(daxa::CommandList& cmd_list, const glm::mat4& vp, glm::ivec2 size, daxa::ImageId depth_image, daxa::ImageId temp_image, daxa::ImageId variance_image, daxa::ImageViewId face, f32vec3 light_position, f32 far_plane) {
+    void LightManager::render_variance_shadow_map(daxa::CommandList& cmd_list, const glm::mat4& vp, glm::ivec2 size, daxa::ImageId depth_image, daxa::ImageId temp_image, daxa::ImageId variance_image, daxa::ImageViewId face, f32vec3 light_position, f32 far_plane) {
         u32 size_x = static_cast<u32>(size.x);
         u32 size_y = static_cast<u32>(size.y);
         
@@ -675,7 +673,6 @@ namespace dare {
                 push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
                 push.face_buffer = model->vertex_buffer_address;
 
-                model->bind_index_buffer(cmd_list);
                 cmd_list.push_constant(push);
                 model->draw(cmd_list);
             }

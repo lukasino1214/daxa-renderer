@@ -22,7 +22,7 @@ using namespace dare;
 
 #include "rendering/bloom_renderer.hpp"
 #include "rendering/ssao_renderer.hpp"
-#include "systems/light_system.hpp"
+#include "manager/light_manager.hpp"
 
 struct App : AppWindow<App> {
     App();
@@ -73,7 +73,8 @@ struct App : AppWindow<App> {
 
     std::unique_ptr<BloomRenderer> bloom_renderer;
     std::unique_ptr<SSAORenderer> ssao_renderer;
-    std::unique_ptr<LightSystem> light_system;
+    std::unique_ptr<LightManager> light_manager;
+    std::shared_ptr<ModelManager> model_manager;
 
     std::shared_ptr<Scene> scene;
 };

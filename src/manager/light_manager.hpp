@@ -10,9 +10,9 @@ using namespace daxa::types;
 
 
 namespace dare {
-    struct LightSystem {
-        LightSystem(std::shared_ptr<Scene> scene, daxa::Device& device, daxa::PipelineManager& pipeline_manager);
-        ~LightSystem();
+    struct LightManager {
+        LightManager(std::shared_ptr<Scene> scene, daxa::Device& device, daxa::PipelineManager& pipeline_manager);
+        ~LightManager();
 
         void reload();
         void update(daxa::CommandList& cmd_list, daxa::SamplerId& sampler);

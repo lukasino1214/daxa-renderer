@@ -17,11 +17,12 @@ namespace dare {
         u32 material_index;
     };
 
+    struct ModelManager;
+
     struct Model {
         daxa::BufferId vertex_buffer;
         daxa::BufferId index_buffer;
         std::vector<Primitive> primitives;
-        std::vector<MaterialInfo> material_infos;
         std::vector<daxa::BufferId> material_buffers;
         std::vector<u64> material_buffer_addresses;
         std::vector<std::unique_ptr<Texture>> images;
@@ -29,11 +30,21 @@ namespace dare {
         u64 vertex_buffer_address;
         daxa::Device device;
         std::string path;
+        std::shared_ptr<ModelManager> model_manager;
 
+        struct LoadingResult {
+            std::shared_ptr<Model> model;
+            std::vector<DrawVertex> vertices;
+            std::vector<u32> indices;
+        };
+
+
+        Model();
         Model(daxa::Device device, const std::string& path);
         ~Model();
 
-        void bind_index_buffer(daxa::CommandList& cmd_list);
+        static auto load_model(daxa::Device device, const std::string& path) -> LoadingResult;
+
         void draw(daxa::CommandList& cmd_list);
         void draw(daxa::CommandList& cmd_list, DrawPush& push_constant);
     };

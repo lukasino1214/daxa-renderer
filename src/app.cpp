@@ -9,6 +9,7 @@
 #include "data/components.hpp"
 #include "data/scene_serializer.hpp"
 
+#include <memory>
 #include <thread>
 
 static constexpr inline u32 shadow = 4096;
@@ -152,23 +153,25 @@ App::App() : AppWindow<App>("daxa-renderer")  {
     bloom_renderer = std::make_unique<BloomRenderer>(pipeline_manager, device, glm::ivec2{size_x, size_y});
     ssao_renderer = std::make_unique<SSAORenderer>(pipeline_manager, device, glm::ivec2{half_size_x, half_size_y});
 
-    this->scene = SceneSerializer::deserialize(this->device, "test.scene");
+    model_manager = std::make_shared<ModelManager>(device);
+
+    this->scene = SceneSerializer::deserialize(model_manager, "test.scene");
     this->scene_hiearchy = std::make_shared<SceneHiearchyPanel>(this->scene);
 
     camera_buffer = std::make_unique<Buffer<CameraInfo>>(this->device);
     camera.camera.resize(size_x, size_y);
 
     // entity helmet
-    Entity entity = scene->create_entity("helment");
+    /*Entity entity = scene->create_entity("helment");
     auto model = std::make_shared<Model>(device, "assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf");
     entity.add_component<ModelComponent>(model);
 
     auto& comp = entity.get_component<TransformComponent>();
     comp.translation = {0.0f, 3.0f, 0.0f};
     comp.rotation = {90.0f, 0.0f, 0.0f};
-    comp.scale = {1.0f, 1.0f, 1.0f};
+    comp.scale = {1.0f, 1.0f, 1.0f};*/
 
-    light_system = std::make_unique<LightSystem>(scene, device, pipeline_manager);
+    light_manager = std::make_unique<LightManager>(scene, device, pipeline_manager);
 }
 
 App::~App() {
@@ -237,18 +240,18 @@ void App::render() {
         return;
     }
 
-    light_system->reload();
+    light_manager->reload();
 
     daxa::CommandList cmd_list = device.create_command_list({ .debug_name = "main loop cmd list" });
     
     scene->update(cmd_list);
-    light_system->update(cmd_list, shadow_sampler);
+    light_manager->update(cmd_list, shadow_sampler);
 
     {
         glm::mat4 view = camera.camera.get_view();
-        //glm::mat4 view = light_system->vie;
+        //glm::mat4 view = light_manager->vie;
         glm::mat4 proj = camera.camera.proj_mat;
-        //glm::mat4 proj = light_system->prj;
+        //glm::mat4 proj = light_manager->prj;
 
         glm::mat4 temp_inverse_projection_mat = glm::inverse(proj);
         glm::mat4 temp_inverse_view_mat = glm::inverse(view);
@@ -339,7 +342,6 @@ void App::render() {
 
             push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
 
-            model->bind_index_buffer(cmd_list);
             model->draw(cmd_list, push);
         }
     });
@@ -367,7 +369,7 @@ void App::render() {
         .emissive = { .image_view_id = emissive_image.default_view(), .sampler_id = sampler },
         .depth = { .image_view_id = depth_image.default_view(), .sampler_id = sampler },
         .ssao = { .image_view_id = ssao_renderer->ssao_blur_image.default_view(), .sampler_id = sampler },
-        .lights_buffer = light_system->lights_buffer->buffer_address,
+        .lights_buffer = light_manager->lights_buffer->buffer_address,
         .camera_buffer = camera_buffer->buffer_address,
     });
     
