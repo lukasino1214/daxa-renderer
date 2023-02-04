@@ -192,7 +192,7 @@ namespace dare {
                 if(model_component) {
                     //auto model = std::make_shared<Model>(device, model_component["Path"].as<std::string>());
                     std::shared_ptr<Model> model = model_manager->load_model(model_component["Path"].as<std::string>());
-                    model->model_manager = model_manager;
+                    //model->model_manager = model_manager;
                     deserialized_entity.add_component<ModelComponent>(model);
                 }
 

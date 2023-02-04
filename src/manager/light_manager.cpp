@@ -501,10 +501,7 @@ namespace dare {
                 auto& model = entity.get_component<ModelComponent>().model;
 
                 push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
-                push.face_buffer = model->vertex_buffer_address;
-
-                cmd_list.push_constant(push);
-                model->draw(cmd_list);
+                model->draw(cmd_list, push);
             }
         });
 
@@ -564,10 +561,7 @@ namespace dare {
                 auto& model = entity.get_component<ModelComponent>().model;
 
                 push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
-                push.face_buffer = model->vertex_buffer_address;
-
-                cmd_list.push_constant(push);
-                model->draw(cmd_list);
+                model->draw(cmd_list, push);
             }
         });
 
@@ -671,10 +665,7 @@ namespace dare {
                 auto& model = entity.get_component<ModelComponent>().model;
 
                 push.object_buffer = entity.get_component<TransformComponent>().object_info->buffer_address;
-                push.face_buffer = model->vertex_buffer_address;
-
-                cmd_list.push_constant(push);
-                model->draw(cmd_list);
+                model->draw(cmd_list, push);
             }
         });
 

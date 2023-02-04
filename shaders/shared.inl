@@ -15,6 +15,24 @@ struct DrawVertex {
 
 DAXA_ENABLE_BUFFER_PTR(DrawVertex)
 
+struct PositionBuffer {
+    f32vec3 position;
+};
+
+DAXA_ENABLE_BUFFER_PTR(PositionBuffer)
+
+struct NormalBuffer {
+    f32vec3 normal;
+};
+
+DAXA_ENABLE_BUFFER_PTR(NormalBuffer)
+
+struct UVBuffer {
+    f32vec2 uv;
+};
+
+DAXA_ENABLE_BUFFER_PTR(UVBuffer)
+
 #define MAX_LIGHTS 16
 
 struct LightsInfo {
@@ -67,7 +85,13 @@ struct CameraInfo {
 DAXA_ENABLE_BUFFER_PTR(CameraInfo)
 
 struct DrawPush {
-    daxa_RWBufferPtr(DrawVertex) face_buffer;
+    //daxa_RWBufferPtr(DrawVertex) face_buffer;
+    daxa_RWBufferPtr(PositionBuffer) position_buffer;
+    u32 position_offset;
+    daxa_RWBufferPtr(NormalBuffer) normal_buffer;
+    u32 normal_offset;
+    daxa_RWBufferPtr(UVBuffer) uv_buffer;
+    u32 uv_offset;
     daxa_RWBufferPtr(MaterialInfo) material_info_buffer;
     daxa_RWBufferPtr(LightsInfo) lights_buffer;
     daxa_RWBufferPtr(CameraInfo) camera_buffer;
@@ -102,7 +126,8 @@ struct BloomPush {
 
 struct ShadowPush {
     f32mat4x4 light_matrix;
-    daxa_RWBufferPtr(DrawVertex) face_buffer;
+    daxa_RWBufferPtr(PositionBuffer) position_buffer;
+    u32 position_offset;
     daxa_RWBufferPtr(ObjectInfo) object_buffer;
     f32vec3 light_position;
     f32 far_plane;

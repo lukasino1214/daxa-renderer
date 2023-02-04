@@ -20,8 +20,6 @@ namespace dare {
             void iterate(std::function<void(Entity)> fn);
             void update(daxa::CommandList& cmd_list);
 
-            std::unique_ptr<Buffer<LightsInfo>> lights_buffer;
-
             daxa::Device& device;
         private:
             entt::registry registry;

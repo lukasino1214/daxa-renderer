@@ -63,7 +63,7 @@ App::App() : AppWindow<App>("daxa-renderer")  {
         .raster = {
             .face_culling = daxa::FaceCullFlagBits::FRONT_BIT
         },
-        .push_constant_size = sizeof(CompositionPush),
+        .push_constant_size = sizeof(DrawPush),
         .debug_name = "raster_pipeline",
     }).value();
 
@@ -162,14 +162,14 @@ App::App() : AppWindow<App>("daxa-renderer")  {
     camera.camera.resize(size_x, size_y);
 
     // entity helmet
-    /*Entity entity = scene->create_entity("helment");
-    auto model = std::make_shared<Model>(device, "assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf");
-    entity.add_component<ModelComponent>(model);
+    Entity helmet_entity = scene->create_entity("helment");
+    auto helmet_model = model_manager->load_model("assets/models/DamagedHelmet/glTF/DamagedHelmet.gltf");
+    helmet_entity.add_component<ModelComponent>(helmet_model);
 
-    auto& comp = entity.get_component<TransformComponent>();
+    auto& comp = helmet_entity.get_component<TransformComponent>();
     comp.translation = {0.0f, 3.0f, 0.0f};
     comp.rotation = {90.0f, 0.0f, 0.0f};
-    comp.scale = {1.0f, 1.0f, 1.0f};*/
+    comp.scale = {1.0f, 1.0f, 1.0f};
 
     light_manager = std::make_unique<LightManager>(scene, device, pipeline_manager);
 }
@@ -333,7 +333,6 @@ void App::render() {
     cmd_list.set_pipeline(*deffered_pipeline);
 
     DrawPush push;
-    push.lights_buffer = scene->lights_buffer->buffer_address;
     push.camera_buffer = camera_buffer->buffer_address;
 
     scene->iterate([&](Entity entity){

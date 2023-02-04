@@ -14,12 +14,12 @@ layout(location = 2) out f32vec3 out_camera_position;
 layout(location = 3) out f32vec3 out_normal;
 
 void main() {
-    gl_Position = CAMERA.projection_matrix * CAMERA.view_matrix * OBJECT.model_matrix * f32vec4(VERTEX.position.xyz, 1.0);
-    out_uv = VERTEX.uv;
-    out_position = (OBJECT.model_matrix * f32vec4(VERTEX.position.xyz, 1.0)).rgb;
+    gl_Position = CAMERA.projection_matrix * CAMERA.view_matrix * OBJECT.model_matrix * f32vec4(VERTEX_POSITION, 1.0);
+    out_uv = VERTEX_UV;
+    out_position = (OBJECT.model_matrix * f32vec4(VERTEX_POSITION, 1.0)).rgb;
     out_camera_position = CAMERA.position;
 
-    out_normal = normalize(f32mat3x3(OBJECT.normal_matrix) * VERTEX.normal.xyz);
+    out_normal = normalize(f32mat3x3(OBJECT.normal_matrix) * VERTEX_NORMAL);
 }
 
 #elif defined(DRAW_FRAG)

@@ -3,7 +3,9 @@
 #define DAXA_ENABLE_IMAGE_OVERLOADS_BASIC 1
 #include <daxa/daxa.inl>
 
-#define VERTEX deref(daxa_push_constant.face_buffer[gl_VertexIndex])
+#define VERTEX_POSITION deref(daxa_push_constant.position_buffer[daxa_push_constant.position_offset + gl_VertexIndex]).position
+#define VERTEX_NORMAL deref(daxa_push_constant.normal_buffer[daxa_push_constant.normal_offset + gl_VertexIndex]).normal
+#define VERTEX_UV deref(daxa_push_constant.uv_buffer[daxa_push_constant.uv_offset + gl_VertexIndex]).uv
 #define OBJECT deref(daxa_push_constant.object_buffer)
 #define CAMERA deref(daxa_push_constant.camera_buffer)
 #define MATERIAL deref(daxa_push_constant.material_info_buffer)

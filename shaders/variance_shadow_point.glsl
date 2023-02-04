@@ -16,7 +16,7 @@ DAXA_USE_PUSH_CONSTANT(ShadowPush)
 layout(location = 0) out f32vec4 out_position;
 
 void main() {
-    out_position = OBJECT.model_matrix * f32vec4(VERTEX.position, 1.0);
+    out_position = OBJECT.model_matrix * f32vec4(VERTEX_POSITION, 1.0);
     gl_Position = daxa_push_constant.light_matrix * out_position;
 }
 #elif defined(DRAW_FRAG)
